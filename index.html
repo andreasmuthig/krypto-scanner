@@ -113,12 +113,12 @@
     function toggleInfo() {
       document.getElementById("infopanel").classList.toggle("open");
     }
-
+  
     async function ladeWatchlist() {
       const res = await fetch('watchlist.json');
       return await res.json();
     }
-
+  
     async function ladeKurs1h(symbol) {
       const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`;
       const res = await fetch(url);
@@ -127,49 +127,54 @@
       const vorheriger = parseFloat(daten[0][4]);
       return ((letzter - vorheriger) / vorheriger) * 100;
     }
-
+  
     async function ladeDaten(watchlist) {
       const url = 'https://api.binance.com/api/v3/ticker/24hr';
       const tabelle = document.getElementById("tabelle");
-
+  
       try {
         const res = await fetch(url);
         const daten = await res.json();
-
+  
         const gefiltert = await Promise.all(watchlist.map(async (symbol) => {
           const item = daten.find(d => d.symbol === symbol);
           const preis = parseFloat(item.lastPrice);
           const change24h = parseFloat(item.priceChangePercent);
           const volume = parseFloat(item.quoteVolume);
           const change1h = await ladeKurs1h(symbol);
-
+  
           const crv = (Math.abs(change24h) * volume / 100000000).toFixed(2);
-
+  
           let score = 0;
           if (change24h >= 5) score += 3;
           else if (change24h >= 2) score += 2;
           else if (change24h >= 0.5) score += 1;
-
+  
           if (volume >= 80000000) score += 3;
           else if (volume >= 50000000) score += 2;
           else score += 1;
-
+  
           if (change1h >= 1) score += 2;
           else if (change1h >= 0.3) score += 1;
-
+  
           if (crv > 2) score += 2;
           else if (crv > 1.5) score += 1;
-
+  
           return {
-            symbol: symbol.replace('USDT', ''), preis, change1h, change24h, volume, crv, score
+            symbol: symbol.replace('USDT', ''), preis, change1h, change24h, volume, crv, score, fullSymbol: symbol
           };
         }));
-
+  
         gefiltert.sort((a, b) => b.score - a.score);
         tabelle.innerHTML = '';
-
+  
         gefiltert.forEach(coin => {
           const zeile = document.createElement("tr");
+          zeile.style.cursor = "pointer";
+          zeile.onclick = () => {
+            window.location.href = `coin.html?symbol=${coin.fullSymbol}`;
+          };
+  
           zeile.innerHTML = `
             <td>${coin.symbol}</td>
             <td>${coin.preis.toFixed(4)}</td>
@@ -181,16 +186,17 @@
           `;
           tabelle.appendChild(zeile);
         });
-
+  
       } catch (err) {
         tabelle.innerHTML = `<tr><td colspan="7">Fehler: ${err.message}</td></tr>`;
       }
     }
-
+  
     ladeWatchlist().then(watchlist => {
       ladeDaten(watchlist);
       setInterval(() => ladeDaten(watchlist), 60000);
     });
   </script>
+  
 </body>
 </html>
