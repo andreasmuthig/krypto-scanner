@@ -16,17 +16,29 @@
     a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
 
-    .crv-meter {
+    .crv-container {
       display: flex;
       justify-content: center;
+      align-items: center;
+      margin-top: 15px;
+      gap: 12px;
+    }
+    .crv-label {
+      font-size: 0.9em;
+      color: #bbb;
+      font-weight: bold;
+      min-width: 30px;
+      text-align: right;
+    }
+    .crv-meter {
+      display: flex;
       gap: 6px;
-      margin-top: 10px;
     }
     .led {
       width: 22px;
       height: 12px;
       background-color: #222;
-      border-radius: 4px;
+      border-radius: 2px;
       box-shadow: inset 0 0 4px #000;
     }
     .led.on {
@@ -34,9 +46,9 @@
       box-shadow: 0 0 6px #00ff80aa, 0 0 12px #00ff80aa;
     }
     .crv-text {
-      font-size: 0.9em;
+      font-size: 0.8em;
       color: #aaa;
-      margin-top: 5px;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -52,8 +64,11 @@
     <tbody id="daten"></tbody>
   </table>
 
-  <div class="crv-meter" id="crvMeter"></div>
-  <div class="crv-text">CRV (Chance-Risiko-Verhältnis): Einschätzung basierend auf potenziellem Gewinn gegenüber möglichem Verlust. Je mehr leuchtende Balken, desto attraktiver für Profis.</div>
+  <div class="crv-container">
+    <div class="crv-label">CRV</div>
+    <div class="crv-meter" id="crvMeter"></div>
+  </div>
+  <div class="crv-text" id="crvText"></div>
 
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
@@ -103,6 +118,14 @@
           crvMeter.appendChild(led);
         }
 
+        const crvText = document.getElementById("crvText");
+        let bewertung = "";
+        if (crv < 1.5) bewertung = "Zu niedrig für einen Trade";
+        else if (crv < 2.0) bewertung = "Grenzwertig – nur bei starker Bestätigung";
+        else if (crv < 2.5) bewertung = "Akzeptabel für erfahrene Trader";
+        else bewertung = "Sehr gutes Verhältnis – Profi-Setup";
+        crvText.textContent = `CRV: ${crv} – ${bewertung}`;
+
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
@@ -113,3 +136,4 @@
   </script>
 </body>
 </html>
+
