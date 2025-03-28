@@ -16,21 +16,21 @@
     a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
 
-    .crv-container {
+    .info-container {
       display: flex;
       justify-content: center;
       align-items: center;
       margin-top: 15px;
       gap: 12px;
     }
-    .crv-label {
+    .info-label {
       font-size: 0.9em;
       color: #bbb;
       font-weight: bold;
       min-width: 30px;
       text-align: right;
     }
-    .crv-meter {
+    .bar {
       display: flex;
       gap: 6px;
     }
@@ -41,11 +41,19 @@
       border-radius: 2px;
       box-shadow: inset 0 0 4px #000;
     }
-    .led.on {
-      background-color: #00ff80;
-      box-shadow: 0 0 6px #00ff80aa, 0 0 12px #00ff80aa;
+    .led.on-blue {
+      background-color: #2196f3;
+      box-shadow: 0 0 6px #2196f3aa, 0 0 12px #2196f3aa;
     }
-    .crv-text {
+    .led.on-white {
+      background-color: #ccc;
+      box-shadow: 0 0 6px #ccc, 0 0 12px #ccc;
+    }
+    .led.on-red {
+      background-color: #ff5252;
+      box-shadow: 0 0 6px #ff5252aa, 0 0 12px #ff5252aa;
+    }
+    .bar-text {
       font-size: 0.8em;
       color: #aaa;
       margin-top: 4px;
@@ -64,11 +72,17 @@
     <tbody id="daten"></tbody>
   </table>
 
-  <div class="crv-container">
-    <div class="crv-label">CRV</div>
-    <div class="crv-meter" id="crvMeter"></div>
+  <div class="info-container">
+    <div class="info-label">CRV</div>
+    <div class="bar" id="crvMeter"></div>
   </div>
-  <div class="crv-text" id="crvText"></div>
+  <div class="bar-text" id="crvText"></div>
+
+  <div class="info-container">
+    <div class="info-label">RSI</div>
+    <div class="bar" id="rsiBar"></div>
+  </div>
+  <div class="bar-text" id="rsiText"></div>
 
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
@@ -77,6 +91,23 @@
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
     document.getElementById("symbol").textContent = symbol;
+
+    async function ladeRSI(symbol) {
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=15m&limit=15`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const schlusskurse = data.map(d => parseFloat(d[4]));
+      let gewinne = 0, verluste = 0;
+      for (let i = 1; i < schlusskurse.length; i++) {
+        const diff = schlusskurse[i] - schlusskurse[i - 1];
+        if (diff >= 0) gewinne += diff;
+        else verluste -= diff;
+      }
+      const avgGain = gewinne / 14;
+      const avgLoss = verluste / 14;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
 
     async function ladeAnalyse() {
       try {
@@ -114,7 +145,7 @@
         for (let i = 1; i <= 5; i++) {
           const led = document.createElement("div");
           led.classList.add("led");
-          if (i <= stufen) led.classList.add("on");
+          if (i <= stufen) led.classList.add("on-white");
           crvMeter.appendChild(led);
         }
 
@@ -126,6 +157,25 @@
         else bewertung = "Sehr gutes Verhältnis – Profi-Setup";
         crvText.textContent = `CRV: ${crv} – ${bewertung}`;
 
+        const rsi = await ladeRSI(symbol);
+        const rsiBar = document.getElementById("rsiBar");
+        rsiBar.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+          const led = document.createElement("div");
+          led.classList.add("led");
+          if (rsi < 30 && i <= 2) led.classList.add("on-blue");
+          else if (rsi > 70 && i >= 4) led.classList.add("on-red");
+          else if (rsi >= 30 && rsi <= 70 && i === 3) led.classList.add("on-white");
+          rsiBar.appendChild(led);
+        }
+
+        const rsiText = document.getElementById("rsiText");
+        let rsiBewertung = "";
+        if (rsi < 30) rsiBewertung = "überverkauft – mögliches Kaufsignal";
+        else if (rsi > 70) rsiBewertung = "überkauft – mögliches Verkaufssignal";
+        else rsiBewertung = "neutral";
+        rsiText.textContent = `RSI: ${rsi.toFixed(0)} – ${rsiBewertung}`;
+
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
@@ -136,4 +186,3 @@
   </script>
 </body>
 </html>
-
