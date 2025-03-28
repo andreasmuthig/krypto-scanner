@@ -2,78 +2,125 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Coin-Analyse</title>
+  <title>Krypto Scanner</title>
   <style>
-    body { background: #111; color: #eee; font-family: Arial; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 10px; border-bottom: 1px solid #333; text-align: center; }
+    body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
+    h1 { font-size: 1.4em; margin-bottom: 5px; color: #ccc; }
+    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid #333; }
     th { background: #222; }
-    h1 { text-align: center; }
     .green { color: #4caf50; }
     .red { color: #f44336; }
+    .crv { font-weight: bold; color: #fff; }
+    a { color: inherit; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1 id="headline">Analyse</h1>
+  <h1>Krypto Scanner</h1>
+  <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
   <table>
     <thead>
       <tr>
-        <th>Asset</th>
-        <th>Kurs</th>
-        <th>Einstieg</th>
-        <th>Take-Profit</th>
-        <th>Stop-Loss</th>
-        <th>Haltezeit</th>
-        <th>Empfehlung</th>
+        <th>Coin</th>
+        <th>Preis</th>
+        <th>1h %</th>
+        <th>24h %</th>
+        <th>Volumen</th>
+        <th>Relevanz-Score</th>
+        <th>Score</th>
       </tr>
     </thead>
-    <tbody id="analyseTabelle">
-      <tr><td colspan="7">Lade Analyse...</td></tr>
+    <tbody id="tabelle">
+      <tr><td colspan="7">Lade Daten...</td></tr>
     </tbody>
   </table>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const symbol = urlParams.get("symbol") || "BTCUSDT";
-    document.getElementById("headline").textContent = `Analyse: ${symbol}`;
-
-    async function ladeLiveDaten(symbol) {
-      const ticker = await fetch("https://api.binance.com/api/v3/ticker/24hr").then(r => r.json());
-      const eintrag = ticker.find(d => d.symbol === symbol);
-      return {
-        symbol,
-        preis: parseFloat(eintrag.lastPrice),
-        change24h: parseFloat(eintrag.priceChangePercent),
-        volume: parseFloat(eintrag.quoteVolume)
-      };
-    }
-
-    async function holeAnalyse() {
+    async function ladeWatchlist() {
       try {
-        const daten = await ladeLiveDaten(symbol);
-        const res = await fetch("http://localhost:3001/api/analyse", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(daten)
-        });
-        const analyse = await res.json();
-
-        document.getElementById("analyseTabelle").innerHTML = `
-          <tr>
-            <td>${symbol}</td>
-            <td>${daten.preis.toFixed(2)}</td>
-            <td>${analyse.entry}</td>
-            <td>${analyse.tp1} / ${analyse.tp2}</td>
-            <td>${analyse.sl}</td>
-            <td>${analyse.hold}</td>
-            <td><strong>${analyse.recommendation}</strong></td>
-          </tr>`;
+        const res = await fetch('/watchlist.json');
+        if (!res.ok) throw new Error('Datei nicht gefunden');
+        return await res.json();
       } catch (err) {
-        document.getElementById("analyseTabelle").innerHTML = `<tr><td colspan="7">Fehler: ${err.message}</td></tr>`;
+        document.getElementById("tabelle").innerHTML = `<tr><td colspan="7">Fehler beim Laden der watchlist.json: ${err.message}</td></tr>`;
+        throw err;
       }
     }
 
-    holeAnalyse();
+    async function ladeKurs1h(symbol) {
+      const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`;
+      const res = await fetch(url);
+      const daten = await res.json();
+      const letzter = parseFloat(daten[1][4]);
+      const vorheriger = parseFloat(daten[0][4]);
+      return ((letzter - vorheriger) / vorheriger) * 100;
+    }
+
+    async function ladeDaten(watchlist) {
+      const url = 'https://api.binance.com/api/v3/ticker/24hr';
+      const tabelle = document.getElementById("tabelle");
+
+      try {
+        const res = await fetch(url);
+        const daten = await res.json();
+
+        const gefiltert = await Promise.all(watchlist.map(async (symbol) => {
+          const item = daten.find(d => d.symbol === symbol);
+          if (!item) return null;
+
+          const preis = parseFloat(item.lastPrice);
+          const change24h = parseFloat(item.priceChangePercent);
+          const volume = parseFloat(item.quoteVolume);
+          const change1h = await ladeKurs1h(symbol);
+
+          const crv = (Math.abs(change24h) * volume / 100000000).toFixed(2);
+
+          let score = 0;
+          if (change24h >= 5) score += 3;
+          else if (change24h >= 2) score += 2;
+          else if (change24h >= 0.5) score += 1;
+
+          if (volume >= 80000000) score += 3;
+          else if (volume >= 50000000) score += 2;
+          else score += 1;
+
+          if (change1h >= 1) score += 2;
+          else if (change1h >= 0.3) score += 1;
+
+          if (crv > 2) score += 2;
+          else if (crv > 1.5) score += 1;
+
+          return { symbol, preis, change1h, change24h, volume, crv, score };
+        }));
+
+        tabelle.innerHTML = '';
+        gefiltert.filter(Boolean).sort((a, b) => b.score - a.score).forEach(coin => {
+          const zeile = document.createElement("tr");
+          zeile.innerHTML = `
+            <td><a href="coin.html?symbol=${coin.symbol}">${coin.symbol.replace('USDT','')}</a></td>
+            <td>${coin.preis.toFixed(4)}</td>
+            <td class="${coin.change1h >= 0 ? 'green' : 'red'}">${coin.change1h.toFixed(2)}%</td>
+            <td class="${coin.change24h >= 0 ? 'green' : 'red'}">${coin.change24h.toFixed(2)}%</td>
+            <td>${(coin.volume / 1e6).toFixed(1)} Mio</td>
+            <td class="crv">${coin.crv}</td>
+            <td><strong>${coin.score}/10</strong></td>
+          `;
+          tabelle.appendChild(zeile);
+        });
+
+        document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
+
+      } catch (err) {
+        tabelle.innerHTML = `<tr><td colspan="7">Fehler beim Laden der Daten: ${err.message}</td></tr>`;
+      }
+    }
+
+    ladeWatchlist().then(watchlist => {
+      ladeDaten(watchlist);
+      setInterval(() => ladeDaten(watchlist), 60000);
+    });
   </script>
 </body>
 </html>
