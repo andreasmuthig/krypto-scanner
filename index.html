@@ -5,92 +5,21 @@
   <title>Krypto Scanner</title>
   <style>
     body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
-    h1 { font-size: 1.4em; margin-bottom: 10px; color: #ccc; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    h1 { font-size: 1.4em; margin-bottom: 5px; color: #ccc; }
+    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; border-bottom: 1px solid #333; }
     th { background: #222; }
     .green { color: #4caf50; }
-    .yellow { color: #ffc107; }
     .red { color: #f44336; }
     .crv { font-weight: bold; color: #fff; }
-    #info-button {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      z-index: 1001;
-    }
-    #info-button img {
-      width: 28px;
-      height: 28px;
-      filter: brightness(1.2);
-    }
-    #infopanel {
-      position: fixed;
-      top: 0;
-      right: -400px;
-      width: 350px;
-      height: 100%;
-      background: #1e1e1e;
-      color: #ccc;
-      padding: 20px;
-      box-shadow: -2px 0 10px rgba(0,0,0,0.5);
-      transition: right 0.3s ease-in-out;
-      z-index: 1000;
-      text-align: left;
-    }
-    #infopanel.open {
-      right: 0;
-    }
-    #infopanel h2 {
-      color: #fff;
-      font-size: 1.2em;
-      margin-top: 0;
-    }
-    #infopanel ul, #infopanel p {
-      font-size: 0.9em;
-      margin-bottom: 20px;
-    }
-    .green-text { color: #4caf50; }
-    .yellow-text { color: #ffc107; }
-    .red-text { color: #f44336; }
+    a { color: inherit; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <button id="info-button" onclick="toggleInfo()">
-    <img src="book.svg" alt="Info">
-  </button>
-
-  <div id="infopanel">
-    <h2>Score-Erklärung</h2>
-    <ul>
-      <li>24h Veränderung: bis zu 3 Punkte</li>
-      <li>Volumen: bis zu 3 Punkte</li>
-      <li>1h Veränderung: bis zu 2 Punkte</li>
-      <li>Relevanz-Score: bis zu 2 Punkte</li>
-    </ul>
-
-    <h2>Was ist der Relevanz-Score?</h2>
-    <p>Der Relevanz-Score kombiniert das Handelsvolumen mit der 24h-Veränderung. Er zeigt, wie viel Bewegung und Marktinteresse gerade bei einem Coin vorhanden ist. Ein hoher Wert deutet auf starke Aktivität hin – ideal für Trader, die auf Dynamik setzen.</p>
-
-    <h2>Volumenbewertung</h2>
-    <ul>
-      <li>≥ 80 Mio: 3 Punkte</li>
-      <li>50–79 Mio: 2 Punkte</li>
-      <li>< 50 Mio: 1 Punkt</li>
-    </ul>
-
-    <h2>Farbskala</h2>
-    <ul>
-      <li class="green-text">Grün: positiv / lohnend</li>
-      <li class="yellow-text">Gelb: neutral / beobachten</li>
-      <li class="red-text">Rot: negativ / meiden</li>
-    </ul>
-  </div>
-
   <h1>Krypto Scanner</h1>
+  <div id="updated">Letzte Aktualisierung: –</div>
 
   <table>
     <thead>
@@ -100,7 +29,7 @@
         <th>1h %</th>
         <th>24h %</th>
         <th>Volumen</th>
-        <th>Relevanz-Score</th>
+        <th>Relevanz</th>
         <th>Score</th>
       </tr>
     </thead>
@@ -110,15 +39,16 @@
   </table>
 
   <script>
-    function toggleInfo() {
-      document.getElementById("infopanel").classList.toggle("open");
+    function formatUhrzeit() {
+      const jetzt = new Date();
+      return jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     }
-  
+
     async function ladeWatchlist() {
       const res = await fetch('watchlist.json');
       return await res.json();
     }
-  
+
     async function ladeKurs1h(symbol) {
       const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`;
       const res = await fetch(url);
@@ -127,57 +57,55 @@
       const vorheriger = parseFloat(daten[0][4]);
       return ((letzter - vorheriger) / vorheriger) * 100;
     }
-  
+
     async function ladeDaten(watchlist) {
       const url = 'https://api.binance.com/api/v3/ticker/24hr';
       const tabelle = document.getElementById("tabelle");
-  
+      const updated = document.getElementById("updated");
+
       try {
         const res = await fetch(url);
         const daten = await res.json();
-  
+
         const gefiltert = await Promise.all(watchlist.map(async (symbol) => {
           const item = daten.find(d => d.symbol === symbol);
           const preis = parseFloat(item.lastPrice);
           const change24h = parseFloat(item.priceChangePercent);
           const volume = parseFloat(item.quoteVolume);
           const change1h = await ladeKurs1h(symbol);
-  
           const crv = (Math.abs(change24h) * volume / 100000000).toFixed(2);
-  
+
           let score = 0;
           if (change24h >= 5) score += 3;
           else if (change24h >= 2) score += 2;
           else if (change24h >= 0.5) score += 1;
-  
+
           if (volume >= 80000000) score += 3;
           else if (volume >= 50000000) score += 2;
           else score += 1;
-  
+
           if (change1h >= 1) score += 2;
           else if (change1h >= 0.3) score += 1;
-  
+
           if (crv > 2) score += 2;
           else if (crv > 1.5) score += 1;
-  
+
           return {
-            symbol: symbol.replace('USDT', ''), preis, change1h, change24h, volume, crv, score, fullSymbol: symbol
+            symbol: symbol.replace('USDT', ''),
+            fullSymbol: symbol,
+            preis, change1h, change24h, volume, crv, score
           };
         }));
-  
+
         gefiltert.sort((a, b) => b.score - a.score);
         tabelle.innerHTML = '';
-  
+        updated.innerText = "Letzte Aktualisierung: " + formatUhrzeit();
+
         gefiltert.forEach(coin => {
           const zeile = document.createElement("tr");
-          zeile.style.cursor = "pointer";
-          zeile.onclick = () => {
-            window.location.href = `coin.html?symbol=${coin.fullSymbol}`;
-          };
-  
           zeile.innerHTML = `
-            <td>${coin.symbol}</td>
-            <td>${coin.preis.toFixed(4)}</td>
+            <td><a href="coin.html?symbol=${coin.fullSymbol}">${coin.symbol}</a></td>
+            <td>${coin.preis.toFixed(2)}</td>
             <td class="${coin.change1h >= 0 ? 'green' : 'red'}">${coin.change1h.toFixed(2)}%</td>
             <td class="${coin.change24h >= 0 ? 'green' : 'red'}">${coin.change24h.toFixed(2)}%</td>
             <td>${(coin.volume / 1e6).toFixed(1)} Mio</td>
@@ -186,17 +114,16 @@
           `;
           tabelle.appendChild(zeile);
         });
-  
+
       } catch (err) {
         tabelle.innerHTML = `<tr><td colspan="7">Fehler: ${err.message}</td></tr>`;
       }
     }
-  
+
     ladeWatchlist().then(watchlist => {
       ladeDaten(watchlist);
       setInterval(() => ladeDaten(watchlist), 60000);
     });
   </script>
-  
 </body>
 </html>
