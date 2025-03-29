@@ -32,14 +32,18 @@ function showAlarm(symbol, current, entry) {
   tooltip.innerHTML = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${current.toFixed(2)} | Einstieg: ${entry.toFixed(2)}`;
   tooltip.style.position = "fixed";
   tooltip.style.top = "20px";
-  tooltip.style.right = "20px";
+  tooltip.style.left = "20px";
   tooltip.style.background = "#f44336";
-  tooltip.style.padding = "15px";
-  tooltip.style.borderRadius = "12px";
+  tooltip.style.padding = "10px 14px";
+  tooltip.style.borderRadius = "8px";
   tooltip.style.color = "white";
   tooltip.style.fontWeight = "bold";
   tooltip.style.cursor = "pointer";
-  tooltip.style.boxShadow = "0 0 20px #f44336";
+  tooltip.style.boxShadow = "0 0 12px #f44336";
+  tooltip.style.zIndex = "9999";
+  tooltip.style.maxWidth = "300px";
+  tooltip.style.fontSize = "0.85rem";
+
   tooltip.onclick = () => {
     alarmActive = false;
     tooltip.remove();
@@ -47,6 +51,7 @@ function showAlarm(symbol, current, entry) {
     if (bell) bell.classList.remove("glow");
     window.location.href = `coin.html?symbol=${symbol}`;
   };
+
   document.body.appendChild(tooltip);
 
   const bell = document.getElementById("alarm-bell");
