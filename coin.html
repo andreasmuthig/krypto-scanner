@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
+  <script src="https://unpkg.com/feather-icons"></script>
   <style>
     body {
       background: #111;
@@ -96,25 +97,10 @@
     }
 
     #spacer {
-      flex-grow: 1;
+      width: 50%;
       background: #1a1a1a;
       margin-left: 20px;
       border-radius: 16px;
-    }
-
-    #alarm-box {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #1c1c1c;
-      border: 1px solid #00ff55;
-      padding: 15px;
-      border-radius: 12px;
-      color: #00ff55;
-      font-weight: bold;
-      box-shadow: 0 0 8px #00ff55;
-      display: none;
-      z-index: 9999;
     }
 
     a {
@@ -161,13 +147,9 @@
     <div id="spacer"></div>
   </div>
 
-  <div id="alarm-box">🔔 Trade jetzt prüfen!</div>
-  <audio id="alarm-sound" src="alarm.mp3" preload="auto"></audio>
-
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
 
-  <script src="alarm.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
@@ -235,14 +217,15 @@
         document.getElementById("levels").innerHTML = `
           <strong>Unterstützung:</strong> ${unterstuetzung} USDT<br />
           <strong>Widerstand:</strong> ${widerstand} USDT`;
-
-        checkAlarm(kurs, einstieg);
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
       }
     }
 
     ladeAnalyse();
+  </script>
+  <script>
+    feather.replace();
   </script>
 </body>
 </html>
