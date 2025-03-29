@@ -3,156 +3,238 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
-  <link href="https://unpkg.com/feather-icons" rel="stylesheet">
+  <script src="https://unpkg.com/feather-icons"></script>
   <style>
     body {
       background: #111;
       color: #eee;
       font-family: Arial, sans-serif;
       margin: 0;
+      padding: 0;
     }
+
     header {
+      background: #000;
+      padding: 20px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 10px 20px;
-      background-color: #1a1a1a;
-      border-bottom: 1px solid #333;
+      justify-content: space-between;
+      border-bottom: 2px solid #222;
     }
-    .alert-icon {
-      position: relative;
+
+    header h1 {
+      font-size: 1.4em;
+      margin: 0;
+    }
+
+    header .timestamp {
+      font-size: 0.8em;
+      color: #777;
+    }
+
+    header .icon {
+      color: #888;
       cursor: pointer;
     }
-    .alert-icon i {
-      color: #eee;
-      transition: color 0.3s;
-    }
-    .alert-icon.active i {
-      color: #ffcc00;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { filter: drop-shadow(0 0 2px #ffcc00); }
-      50% { filter: drop-shadow(0 0 8px #ffcc00); }
-      100% { filter: drop-shadow(0 0 2px #ffcc00); }
-    }
-    .alarm-box {
-      position: absolute;
-      top: 30px;
-      right: 0;
-      background: #222;
-      color: #eee;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px #000;
-      font-size: 0.9em;
-      display: none;
-      width: 220px;
-    }
-    .alarm-box.active {
-      display: block;
-    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 10px 0;
+      margin-top: 10px;
     }
+
     th, td {
       padding: 10px;
-      text-align: center;
       border-bottom: 1px solid #333;
+      text-align: left;
     }
+
     th {
       background: #222;
-      font-weight: bold;
     }
-    .main-container {
+
+    .grid {
       display: flex;
+      margin-top: 20px;
     }
-    .left-panel {
-      width: 420px;
+
+    .info-panel {
+      width: 60%;
       padding: 20px;
+    }
+
+    .section {
       background: #1a1a1a;
-    }
-    .right-panel {
-      flex: 1;
-      background: #181818;
-    }
-    .block {
-      margin-bottom: 20px;
-      background: #222;
       padding: 15px;
+      margin-bottom: 20px;
       border-radius: 12px;
     }
-    .led-bar {
+
+    .led-strip, .rsi-strip {
       display: flex;
-      gap: 6px;
-      margin: 5px 0 8px;
+      gap: 4px;
+      margin: 6px 0;
     }
-    .led {
+
+    .led, .rsi-led {
       width: 20px;
-      height: 12px;
+      height: 10px;
       border-radius: 1px;
+      background: #444;
+    }
+
+    .led.on { background: lime; box-shadow: 0 0 5px lime; }
+    .rsi-led.on { background: dodgerblue; box-shadow: 0 0 5px dodgerblue; }
+
+    .bar {
       background: #333;
-      box-shadow: 0 0 2px #000;
-    }
-    .led.on.green {
-      background: #00ff5e;
-      box-shadow: 0 0 5px #00ff5e;
-    }
-    .led.on.blue {
-      background: #3cf;
-      box-shadow: 0 0 5px #3cf;
-    }
-    .bar-wrapper {
-      background: #333;
-      height: 6px;
-      border-radius: 3px;
+      border-radius: 5px;
       overflow: hidden;
-      margin-top: 6px;
+      height: 10px;
+      margin: 4px 0;
     }
+
     .bar-fill {
-      height: 100%;
-      background: #f44336;
-      box-shadow: 0 0 5px #f44336;
+      height: 10px;
+      background: crimson;
+      box-shadow: 0 0 5px crimson;
     }
-    .highlight-green { color: #00ff5e; }
-    .highlight-red { color: #f44336; }
-    .highlight { font-weight: bold; }
-    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
-    a:hover { text-decoration: underline; }
+
+    .highlight {
+      font-weight: bold;
+      color: #ccc;
+    }
+
+    .support, .resistance {
+      margin-top: 8px;
+    }
+
+    .support span, .resistance span {
+      font-weight: bold;
+    }
+
+    .green { color: #4caf50; }
+    .red { color: #f44336; }
+
+    .background-frame {
+      width: 40%;
+      background: #1a1a1a;
+      border-left: 2px solid #222;
+    }
+
+    a {
+      display: block;
+      color: #4fc3f7;
+      margin-top: 40px;
+      text-decoration: none;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h2>Analyse: <span id="symbol">...</span></h2>
-    <div class="alert-icon" onclick="toggleAlarmBox()">
-      <i data-feather="bell"></i>
-      <div class="alarm-box" id="alarmBox">
-        <strong>Alarm:</strong><br>
-        Einstiegskurs erreicht für <span id="alarm-coin">...</span><br>
-        <a href="#" id="alarm-link">Trade jetzt prüfen</a>
-      </div>
+    <div>
+      <h1>Analyse: <span id="symbol">...</span></h1>
+      <div class="timestamp">Letzte Aktualisierung: <span id="zeit"></span></div>
     </div>
+    <div class="icon" id="alarmIcon" data-feather="bell"></div>
   </header>
-
-  <div id="updated" style="padding: 0 20px; font-size: 0.8em; color: #777;">Letzte Aktualisierung: <span id="zeit"></span></div>
 
   <table>
     <thead>
       <tr>
-        <th>Asset</th>
-        <th>Kurs</th>
-        <th>Einstieg</th>
-        <th>Take-Profit</th>
-        <th>Stop-Loss</th>
-        <th>Haltezeit</th>
-        <th>Empfehlung</th>
+        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th><th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
       </tr>
     </thead>
     <tbody id="daten"></tbody>
   </table>
 
-  <!-- Rest des Codes bleibt erhalten -->
+  <div class="grid">
+    <div class="info-panel">
+      <div class="section">
+        <div class="highlight">CRV:</div>
+        <div class="led-strip" id="crvLeds"></div>
+        <div id="crvText"></div>
+      </div>
+      <div class="section">
+        <div class="highlight">RSI:</div>
+        <div class="rsi-strip" id="rsiLeds"></div>
+        <div id="rsiText"></div>
+      </div>
+      <div class="section">
+        <div class="highlight">Preisveränderung (24h):</div>
+        <div class="bar">
+          <div id="changeBar" class="bar-fill" style="width: 0%"></div>
+        </div>
+        <div id="changeText"></div>
+      </div>
+      <div class="section">
+        <div class="support">Unterstützung: <span id="support"></span> USDT</div>
+        <div class="resistance">Widerstand: <span id="resistance"></span> USDT</div>
+      </div>
+    </div>
+    <div class="background-frame"></div>
+  </div>
+
+  <a href="index.html">← zurück zur Übersicht</a>
+
+  <script>
+    feather.replace();
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get("symbol") || "BTCUSDT";
+    document.getElementById("symbol").textContent = symbol;
+
+    async function ladeAnalyse() {
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+        const data = await res.json();
+
+        const kurs = parseFloat(data.lastPrice);
+        const change = parseFloat(data.priceChangePercent);
+        const einstieg = (kurs * 0.995).toFixed(2);
+        const tp1 = (kurs * 1.015).toFixed(2);
+        const tp2 = (kurs * 1.03).toFixed(2);
+        const stop = (kurs * 0.99).toFixed(2);
+        const empfehlung = kurs > einstieg ? "Long" : "Short";
+
+        const rsi = 65; // Beispielwert, später ersetzen
+        const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
+
+        const crvLeds = Math.min(Math.floor(crv), 5);
+        document.getElementById("crvLeds").innerHTML = Array.from({length: 5}).map((_, i) => `<div class="led${i < crvLeds ? ' on' : ''}"></div>`).join("");
+        document.getElementById("crvText").textContent = `CRV: ${crv} — Sehr gutes Verhältnis – Profi-Setup`;
+
+        const rsiLeds = Math.min(Math.floor(rsi / 20), 5);
+        document.getElementById("rsiLeds").innerHTML = Array.from({length: 5}).map((_, i) => `<div class="rsi-led${i < rsiLeds ? ' on' : ''}"></div>`).join("");
+        document.getElementById("rsiText").textContent = `RSI: ${rsi} — ${rsi < 30 ? 'überverkauft' : rsi > 70 ? 'überkauft' : 'neutral'}`;
+
+        document.getElementById("changeText").innerHTML = `${change.toFixed(2)} % in 24h`;
+        document.getElementById("changeBar").style.width = `${Math.min(Math.abs(change), 10) * 10}%`;
+
+        const support = stop;
+        const resistance = tp1;
+        document.getElementById("support").textContent = support;
+        document.getElementById("resistance").textContent = resistance;
+
+        document.getElementById("daten").innerHTML = `
+          <tr>
+            <td>${symbol}</td>
+            <td>${kurs.toFixed(2)}</td>
+            <td>${einstieg}</td>
+            <td>${tp1} / ${tp2}</td>
+            <td>${stop}</td>
+            <td>kurzfristig</td>
+            <td class="${empfehlung === 'Long' ? 'green' : 'red'}">${empfehlung}</td>
+          </tr>
+        `;
+
+        document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
+      }
+    }
+
+    ladeAnalyse();
+  </script>
 </body>
 </html>
