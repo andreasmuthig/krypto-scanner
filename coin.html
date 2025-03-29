@@ -10,47 +10,17 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; border-bottom: 1px solid #333; }
     th { background: #222; }
-    .crv { font-weight: bold; color: #fff; }
+    .crv, .rsi, .pricechange, .support, .resistance { font-weight: bold; text-align: left; margin-top: 15px; }
     .green { color: #4caf50; }
     .red { color: #f44336; }
+    .neutral { color: #999; }
+    .led-bar { display: inline-block; width: 18px; height: 10px; margin: 0 2px; border-radius: 1px; background-color: #222; box-shadow: inset 0 0 2px #000; }
+    .led-on { background-color: #0ff; box-shadow: 0 0 6px #0ff; }
+    .led-crv { background-color: #0f0; box-shadow: 0 0 6px #0f0; }
+    .led-rsi { background-color: #00f; box-shadow: 0 0 6px #00f; }
+    .led-weak { background-color: #555; }
     a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
-
-    .bar-container {
-      display: flex;
-      justify-content: center;
-      gap: 4px;
-      margin: 10px 0;
-    }
-
-    .led-bar {
-      width: 18px;
-      height: 12px;
-      background: #333;
-      border-radius: 1px;
-      box-shadow: inset 0 0 3px #000;
-    }
-
-    .led-bar.on {
-      background: #0f0;
-      box-shadow: 0 0 6px #0f0, 0 0 10px #0f0;
-    }
-
-    .led-bar.warn {
-      background: orange;
-      box-shadow: 0 0 6px orange;
-    }
-
-    .led-bar.danger {
-      background: red;
-      box-shadow: 0 0 6px red;
-    }
-
-    .label {
-      font-size: 0.9em;
-      color: #ccc;
-      margin-top: 2px;
-    }
   </style>
 </head>
 <body>
@@ -64,7 +34,30 @@
     </thead>
     <tbody id="daten"></tbody>
   </table>
-  <div id="indikatoren"></div>
+
+  <div class="crv">
+    CRV:
+    <span id="crv-leds"></span><br>
+    <small id="crv-text"></small>
+  </div>
+
+  <div class="rsi">
+    RSI:
+    <span id="rsi-leds"></span><br>
+    <small id="rsi-text"></small>
+  </div>
+
+  <div class="pricechange">
+    Preisveränderung (24h):
+    <div id="pricechange-bar" style="height: 8px; width: 150px; margin: 5px auto; background: #333; border-radius: 4px; overflow: hidden;">
+      <div id="pricechange-fill" style="height: 100%; width: 0%; background: #4caf50;"></div>
+    </div>
+    <small id="pricechange-text"></small>
+  </div>
+
+  <div class="support" id="support-info"></div>
+  <div class="resistance" id="resistance-info"></div>
+
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
 
@@ -87,9 +80,9 @@
         const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
         const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
-
-        const empfehlung = tp1 > kurs ? "Long" : "Short";
-        const farbe = tp1 > kurs ? "green" : "red";
+        const rsi = 30;
+        const empfehlung = change > 0 ? "Long" : "Short";
+        const farbe = change > 0 ? "green" : "red";
 
         document.getElementById("daten").innerHTML = `
           <tr>
@@ -103,21 +96,40 @@
           </tr>
         `;
 
-        const ledLevel = crv >= 4 ? 5 : crv >= 3 ? 4 : crv >= 2 ? 3 : crv >= 1.5 ? 2 : 1;
+        // CRV LEDs
+        const crvContainer = document.getElementById("crv-leds");
+        crvContainer.innerHTML = "";
+        let crvVal = parseFloat(crv);
+        for (let i = 1; i <= 5; i++) {
+          const led = document.createElement("span");
+          led.className = "led-bar" + (crvVal >= i ? " led-crv" : "");
+          crvContainer.appendChild(led);
+        }
+        document.getElementById("crv-text").textContent = `CRV: ${crv} – ${crvVal >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crvVal >= 2 ? "Ausgewogenes Verhältnis" : "Niedriges CRV"}`;
 
-        const leds = Array.from({ length: 5 }, (_, i) => {
-          let cls = "led-bar";
-          if (i < ledLevel) cls += " on";
-          return `<div class="${cls}"></div>`;
-        }).join("");
+        // RSI LEDs
+        const rsiContainer = document.getElementById("rsi-leds");
+        rsiContainer.innerHTML = "";
+        for (let i = 1; i <= 5; i++) {
+          const led = document.createElement("span");
+          led.className = "led-bar" + (rsi <= 30 && i <= 3 ? " led-rsi" : "");
+          rsiContainer.appendChild(led);
+        }
+        document.getElementById("rsi-text").textContent = `RSI: ${rsi} – ${rsi <= 30 ? "überverkauft – mögliches Kaufsignal" : rsi >= 70 ? "überkauft – Verkaufsrisiko" : "neutral"}`;
 
-        document.getElementById("indikatoren").innerHTML = `
-          <div style="margin-top: 30px">
-            <div style="color: #ccc; font-weight: bold;">CRV</div>
-            <div class="bar-container">${leds}</div>
-            <div class="label">CRV: ${crv} — ${crv >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crv >= 2 ? "Gutes Setup" : "Verbesserungswürdig"}</div>
-          </div>
-        `;
+        // Preisänderung
+        const pcFill = document.getElementById("pricechange-fill");
+        const pcText = document.getElementById("pricechange-text");
+        pcFill.style.width = Math.min(Math.abs(change), 100) + "%";
+        pcFill.style.backgroundColor = change >= 0 ? "#4caf50" : "#f44336";
+        pcText.textContent = `${change.toFixed(2)} % in 24h`;
+
+        // Unterstützung/Widerstand (Beispielwerte)
+        const support = kurs - (kurs * 0.5 / 100);
+        const resistance = kurs + (kurs * 0.5 / 100);
+
+        document.getElementById("support-info").innerHTML = `Unterstützung: <span class="${kurs <= support ? 'green' : 'neutral'}">${support.toFixed(2)} USDT${kurs <= support ? ' – erreicht ✅' : ''}</span>`;
+        document.getElementById("resistance-info").innerHTML = `Widerstand: <span class="${kurs >= resistance ? 'red' : 'neutral'}">${resistance.toFixed(2)} USDT${kurs >= resistance ? ' – durchbrochen ❗' : ''}</span>`;
 
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
       } catch (err) {
