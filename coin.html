@@ -8,79 +8,103 @@
       background: #111;
       color: #eee;
       font-family: Arial, sans-serif;
-      padding: 0;
-      margin: 0;
+      padding: 20px;
     }
+
     h1 {
       font-size: 1.6em;
       margin-bottom: 5px;
       color: #fff;
     }
+
     #updated {
       font-size: 0.8em;
       color: #777;
       margin-bottom: 15px;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-bottom: 20px;
     }
+
     th, td {
       padding: 10px;
       border-bottom: 1px solid #333;
       text-align: left;
     }
+
     th {
       background: #222;
     }
-    .crv, .rsi, .sentiment, .support-box {
+
+    .box {
       background: #1c1c1c;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 14px;
-      width: 600px;
+      border-radius: 16px;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      width: 45%;
     }
-    .crv-leds span,
-    .rsi-leds span {
+
+    .led-bar {
       display: inline-block;
-      width: 16px;
-      height: 16px;
+      width: 12px;
+      height: 12px;
       margin-right: 4px;
       border-radius: 2px;
-      background: #333;
-      box-shadow: 0 0 3px #000;
+      background-color: #444;
     }
+
     .led-on-green {
-      background: #00ff66;
-      box-shadow: 0 0 6px #00ff66;
+      background-color: #00ff55;
+      box-shadow: 0 0 4px #00ff55;
     }
+
     .led-on-blue {
-      background: #3399ff;
-      box-shadow: 0 0 6px #3399ff;
+      background-color: #3399ff;
+      box-shadow: 0 0 4px #3399ff;
     }
-    .led-on-red {
-      background: #ff3b3b;
-      box-shadow: 0 0 6px #ff3b3b;
-    }
-    .bar {
+
+    .bar-wrapper {
+      background: #222;
       height: 8px;
-      border-radius: 5px;
-      background: #333;
-      margin-top: 6px;
-      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 5px;
     }
-    .bar span {
-      display: block;
+
+    .bar-fill {
       height: 100%;
-      border-radius: 5px;
-      background: #ff3b3b;
-      box-shadow: 0 0 6px #ff3b3b;
+      border-radius: 8px;
+      box-shadow: 0 0 4px currentColor;
     }
-    .support-box strong {
-      display: inline-block;
-      width: 120px;
+
+    .bar-red {
+      background-color: #f44336;
     }
+
+    .bar-green {
+      background-color: #4caf50;
+    }
+
+    #details {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+    }
+
+    #metrics {
+      width: 50%;
+    }
+
+    #spacer {
+      flex-grow: 1;
+      background: #1a1a1a;
+      margin-left: 20px;
+      border-radius: 16px;
+    }
+
     a {
       color: #4fc3f7;
       text-decoration: none;
@@ -88,18 +112,6 @@
     }
     a:hover {
       text-decoration: underline;
-    }
-    .container {
-      display: flex;
-    }
-    .left-panel {
-      padding: 20px;
-    }
-    .right-space {
-      flex-grow: 1;
-      background-color: #1a1a1a;
-      border-top-right-radius: 20px;
-      border-bottom-right-radius: 20px;
     }
   </style>
 </head>
@@ -116,34 +128,29 @@
     <tbody id="daten"></tbody>
   </table>
 
-  <div class="container">
-    <div class="left-panel">
-      <div class="crv">
-        <div><strong>CRV:</strong> <span class="crv-leds" id="crv-leds"></span></div>
+  <div id="details">
+    <div id="metrics">
+      <div class="box">
+        <strong>CRV:</strong> <div id="crv-leds"></div>
         <div id="crv-text"></div>
       </div>
-
-      <div class="rsi">
-        <div><strong>RSI:</strong> <span class="rsi-leds" id="rsi-leds"></span></div>
+      <div class="box">
+        <strong>RSI:</strong> <div id="rsi-leds"></div>
         <div id="rsi-text"></div>
       </div>
-
-      <div class="sentiment">
-        <div><strong>Preisveränderung (24h):</strong></div>
-        <div id="change24"></div>
-        <div class="bar"><span id="change-bar" style="width: 0%"></span></div>
+      <div class="box">
+        <strong>Preisveränderung (24h):</strong>
+        <div id="price-change"></div>
       </div>
-
-      <div class="support-box">
-        <div><strong>Unterstützung:</strong> <span id="support"></span> USDT</div>
-        <div><strong>Widerstand:</strong> <span id="resistance"></span> USDT</div>
+      <div class="box">
+        <div id="levels"></div>
       </div>
     </div>
-    <div class="right-space"></div>
+    <div id="spacer"></div>
   </div>
 
   <br />
-  <a href="index.html">&larr; zurück zur Übersicht</a>
+  <a href="index.html">← zurück zur Übersicht</a>
 
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -162,32 +169,30 @@
         const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
         const empfehlung = tp1 > kurs ? "Long" : "Short";
-        const farbe = empfehlung === "Long" ? "green" : "red";
+        const farbe = tp1 > kurs ? "green" : "red";
 
         const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
-        const rsi = 65;
+        const rsi = Math.floor(Math.random() * 100);
 
-        let crvText = "Mittel";
-        if (crv >= 3) crvText = "Sehr gutes Verhältnis — Profi-Setup";
-        else if (crv >= 2) crvText = "Gut — lohnenswert";
+        let crvLeds = "";
+        for (let i = 0; i < 5; i++) {
+          crvLeds += `<span class="led-bar ${i < crv ? 'led-on-green' : ''}"></span>`;
+        }
 
-        const ledsCrv = Math.min(5, Math.round(crv));
-        document.getElementById("crv-leds").innerHTML =
-          '<span class="' + 'led-on-green"></span>'.repeat(ledsCrv) +
-          '<span></span>'.repeat(5 - ledsCrv);
-        document.getElementById("crv-text").innerHTML = `CRV: ${crv} — ${crvText}`;
+        let rsiLeds = "";
+        const rsiLevel = Math.round(rsi / 20);
+        for (let i = 0; i < 5; i++) {
+          rsiLeds += `<span class="led-bar ${i < rsiLevel ? 'led-on-blue' : ''}"></span>`;
+        }
 
-        const ledsRsi = Math.round((rsi / 100) * 5);
-        document.getElementById("rsi-leds").innerHTML =
-          '<span class="' + 'led-on-blue"></span>'.repeat(ledsRsi) +
-          '<span></span>'.repeat(5 - ledsRsi);
-        document.getElementById("rsi-text").innerHTML = `RSI: ${rsi} — neutral`;
+        const crvBeschreibung = crv >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crv >= 2 ? "Gutes Verhältnis" : "Niedriges CRV";
+        const rsiText = rsi < 30 ? "überverkauft – mögliches Kaufsignal" : rsi > 70 ? "überkauft – mögliches Verkaufssignal" : "neutral";
 
-        document.getElementById("change24").textContent = `${change.toFixed(2)} % in 24h`;
-        document.getElementById("change-bar").style.width = Math.min(Math.abs(change), 10) * 10 + "%";
+        const barFarbe = change >= 0 ? "bar-green" : "bar-red";
+        const barBreite = Math.min(Math.abs(change) * 3, 100);
 
-        document.getElementById("support").textContent = stop.toFixed(2);
-        document.getElementById("resistance").textContent = tp1.toFixed(2);
+        const widerstand = tp1.toFixed(2);
+        const unterstuetzung = stop.toFixed(2);
 
         document.getElementById("daten").innerHTML = `
           <tr>
@@ -197,11 +202,23 @@
             <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
             <td>${stop.toFixed(2)}</td>
             <td>kurzfristig</td>
-            <td class="${farbe}"><strong>${empfehlung}</strong></td>
+            <td style="color: ${farbe}; font-weight: bold;">${empfehlung}</td>
           </tr>
         `;
 
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
+        document.getElementById("crv-leds").innerHTML = crvLeds;
+        document.getElementById("crv-text").innerHTML = `CRV: ${crv} — ${crvBeschreibung}`;
+        document.getElementById("rsi-leds").innerHTML = rsiLeds;
+        document.getElementById("rsi-text").innerHTML = `RSI: ${rsi} — ${rsiText}`;
+        document.getElementById("price-change").innerHTML = `
+          ${change.toFixed(2)} % in 24h
+          <div class="bar-wrapper">
+            <div class="bar-fill ${barFarbe}" style="width: ${barBreite}%;"></div>
+          </div>`;
+        document.getElementById("levels").innerHTML = `
+          <strong>Unterstützung:</strong> ${unterstuetzung} USDT<br />
+          <strong>Widerstand:</strong> ${widerstand} USDT`;
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
       }
