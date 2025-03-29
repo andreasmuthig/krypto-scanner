@@ -112,6 +112,13 @@
       margin-bottom: 20px;
     }
 
+    #icon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+    }
+
     a {
       color: #4fc3f7;
       text-decoration: none;
@@ -124,6 +131,7 @@
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
+  <div id="icon"><i data-feather="bell"></i></div>
   <div id="alert-box"></div>
   <h1>Analyse: <span id="symbol">...</span></h1>
   <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
@@ -162,7 +170,9 @@
   <a href="index.html">← zurück zur Übersicht</a>
 
   <script>
-    feather.replace();
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.feather) feather.replace();
+    });
 
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
@@ -231,7 +241,6 @@
           <strong>Unterstützung:</strong> ${unterstuetzung} USDT<br />
           <strong>Widerstand:</strong> ${widerstand} USDT`;
 
-        // Alarmfunktion
         if (Math.abs(kurs - einstieg) < kurs * 0.01) {
           const box = document.getElementById("alert-box");
           box.textContent = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${kurs.toFixed(2)} Einstieg: ${einstieg.toFixed(2)}`;
