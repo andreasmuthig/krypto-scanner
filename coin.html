@@ -4,23 +4,94 @@
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
   <style>
-    body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
-    h1 { font-size: 1.6em; margin-bottom: 5px; color: #fff; }
-    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 10px; border-bottom: 1px solid #333; }
-    th { background: #222; }
-    .crv, .rsi, .pricechange, .support, .resistance { font-weight: bold; text-align: left; margin-top: 15px; }
+    body {
+      background: #111;
+      color: #eee;
+      font-family: Arial;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.6em;
+      margin-bottom: 5px;
+      color: #fff;
+    }
+    #updated {
+      font-size: 0.8em;
+      color: #777;
+      margin-bottom: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+    }
+    th {
+      background: #222;
+    }
+    .crv, .rsi, .sentiment, .support {
+      margin: 20px auto;
+      padding: 15px;
+      width: 90%;
+      border-radius: 8px;
+      text-align: left;
+    }
+    .crv {
+      background: #1a1a1a;
+    }
+    .rsi {
+      background: #151d24;
+    }
+    .sentiment {
+      background: #1d1a1a;
+    }
+    .support {
+      background: #1a1d1a;
+    }
+    .led {
+      display: inline-block;
+      width: 20px;
+      height: 10px;
+      margin: 0 3px;
+      background: #333;
+      border-radius: 1px;
+      box-shadow: 0 0 5px #000;
+    }
+    .led.on {
+      background: #00ff00;
+      box-shadow: 0 0 8px #0f0, 0 0 15px #0f0;
+    }
+    .led.blue {
+      background: #2196f3;
+      box-shadow: 0 0 8px #2196f3, 0 0 15px #2196f3;
+    }
+    .bar {
+      height: 8px;
+      background: #444;
+      border-radius: 3px;
+      margin-top: 5px;
+      position: relative;
+    }
+    .bar-fill {
+      height: 8px;
+      border-radius: 3px;
+      background: #e53935;
+      transition: width 0.3s ease;
+    }
     .green { color: #4caf50; }
     .red { color: #f44336; }
-    .neutral { color: #999; }
-    .led-bar { display: inline-block; width: 18px; height: 10px; margin: 0 2px; border-radius: 1px; background-color: #222; box-shadow: inset 0 0 2px #000; }
-    .led-on { background-color: #0ff; box-shadow: 0 0 6px #0ff; }
-    .led-crv { background-color: #0f0; box-shadow: 0 0 6px #0f0; }
-    .led-rsi { background-color: #00f; box-shadow: 0 0 6px #00f; }
-    .led-weak { background-color: #555; }
-    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
-    a:hover { text-decoration: underline; }
+    a {
+      color: #4fc3f7;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -34,30 +105,10 @@
     </thead>
     <tbody id="daten"></tbody>
   </table>
-
-  <div class="crv">
-    CRV:
-    <span id="crv-leds"></span><br>
-    <small id="crv-text"></small>
-  </div>
-
-  <div class="rsi">
-    RSI:
-    <span id="rsi-leds"></span><br>
-    <small id="rsi-text"></small>
-  </div>
-
-  <div class="pricechange">
-    Preisveränderung (24h):
-    <div id="pricechange-bar" style="height: 8px; width: 150px; margin: 5px auto; background: #333; border-radius: 4px; overflow: hidden;">
-      <div id="pricechange-fill" style="height: 100%; width: 0%; background: #4caf50;"></div>
-    </div>
-    <small id="pricechange-text"></small>
-  </div>
-
-  <div class="support" id="support-info"></div>
-  <div class="resistance" id="resistance-info"></div>
-
+  <div class="crv" id="crv-section"></div>
+  <div class="rsi" id="rsi-section"></div>
+  <div class="sentiment" id="sentiment-section"></div>
+  <div class="support" id="support-section"></div>
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
 
@@ -73,14 +124,10 @@
 
         const kurs = parseFloat(data.lastPrice);
         const change = parseFloat(data.priceChangePercent);
-        const volumen = parseFloat(data.quoteVolume);
-
         const einstieg = kurs * 0.995;
         const tp1 = kurs * 1.015;
         const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
-        const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
-        const rsi = 30;
         const empfehlung = change > 0 ? "Long" : "Short";
         const farbe = change > 0 ? "green" : "red";
 
@@ -96,40 +143,37 @@
           </tr>
         `;
 
-        // CRV LEDs
-        const crvContainer = document.getElementById("crv-leds");
-        crvContainer.innerHTML = "";
-        let crvVal = parseFloat(crv);
-        for (let i = 1; i <= 5; i++) {
-          const led = document.createElement("span");
-          led.className = "led-bar" + (crvVal >= i ? " led-crv" : "");
-          crvContainer.appendChild(led);
-        }
-        document.getElementById("crv-text").textContent = `CRV: ${crv} – ${crvVal >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crvVal >= 2 ? "Ausgewogenes Verhältnis" : "Niedriges CRV"}`;
+        // CRV-Anzeige
+        const crv = 4;
+        const leds = Array.from({ length: 5 }, (_, i) => `<span class="led ${i < crv ? 'on' : ''}"></span>`).join('');
+        document.getElementById("crv-section").innerHTML = `
+          <strong>CRV:</strong><br>${leds}<br>
+          <span>CRV: ${crv.toFixed(2)} – Sehr gutes Verhältnis – Profi-Setup</span>
+        `;
 
-        // RSI LEDs
-        const rsiContainer = document.getElementById("rsi-leds");
-        rsiContainer.innerHTML = "";
-        for (let i = 1; i <= 5; i++) {
-          const led = document.createElement("span");
-          led.className = "led-bar" + (rsi <= 30 && i <= 3 ? " led-rsi" : "");
-          rsiContainer.appendChild(led);
-        }
-        document.getElementById("rsi-text").textContent = `RSI: ${rsi} – ${rsi <= 30 ? "überverkauft – mögliches Kaufsignal" : rsi >= 70 ? "überkauft – Verkaufsrisiko" : "neutral"}`;
+        // RSI-Anzeige (simuliert)
+        const rsi = 30;
+        const rsiLeds = Array.from({ length: 5 }, (_, i) => `<span class="led ${i < 2 ? 'blue' : ''}"></span>`).join('');
+        document.getElementById("rsi-section").innerHTML = `
+          <strong>RSI:</strong><br>${rsiLeds}<br>
+          <span>RSI: ${rsi} – überverkauft – mögliches Kaufsignal</span>
+        `;
 
-        // Preisänderung
-        const pcFill = document.getElementById("pricechange-fill");
-        const pcText = document.getElementById("pricechange-text");
-        pcFill.style.width = Math.min(Math.abs(change), 100) + "%";
-        pcFill.style.backgroundColor = change >= 0 ? "#4caf50" : "#f44336";
-        pcText.textContent = `${change.toFixed(2)} % in 24h`;
+        // Preisänderung (Sentiment)
+        const sentimentColor = change > 0 ? '#4caf50' : '#e53935';
+        const sentimentBar = `<div class="bar"><div class="bar-fill" style="width:${Math.abs(change)}%; background:${sentimentColor}"></div></div>`;
+        document.getElementById("sentiment-section").innerHTML = `
+          <strong>Preisveränderung (24h):</strong><br>${change.toFixed(2)} % in 24h ${sentimentBar}
+        `;
 
-        // Unterstützung/Widerstand (Beispielwerte)
-        const support = kurs - (kurs * 0.5 / 100);
-        const resistance = kurs + (kurs * 0.5 / 100);
-
-        document.getElementById("support-info").innerHTML = `Unterstützung: <span class="${kurs <= support ? 'green' : 'neutral'}">${support.toFixed(2)} USDT${kurs <= support ? ' – erreicht ✅' : ''}</span>`;
-        document.getElementById("resistance-info").innerHTML = `Widerstand: <span class="${kurs >= resistance ? 'red' : 'neutral'}">${resistance.toFixed(2)} USDT${kurs >= resistance ? ' – durchbrochen ❗' : ''}</span>`;
+        // Unterstützungs- & Widerstandszonen
+        const support = (kurs * 0.99).toFixed(2);
+        const resistance = (kurs * 1.01).toFixed(2);
+        const highlightStyle = value => kurs >= value ? 'style="color:#4caf50"' : '';
+        document.getElementById("support-section").innerHTML = `
+          <strong>Unterstützung:</strong> <span ${highlightStyle(support)}>${support} USDT</span><br>
+          <strong>Widerstand:</strong> <span ${highlightStyle(resistance)}>${resistance} USDT</span>
+        `;
 
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
       } catch (err) {
