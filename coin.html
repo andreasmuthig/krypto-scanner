@@ -4,93 +4,70 @@
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
   <style>
-    body {
-      background: #111;
-      color: #eee;
-      font-family: Arial;
-      padding: 20px;
-      text-align: center;
-    }
-    h1 {
-      font-size: 1.6em;
-      margin-bottom: 5px;
-      color: #fff;
-    }
-    #updated {
-      font-size: 0.8em;
-      color: #777;
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #333;
-    }
-    th {
-      background: #222;
-    }
-    .crv, .rsi, .sentiment, .support {
-      margin: 20px auto;
-      padding: 15px;
-      width: 90%;
-      border-radius: 8px;
-      text-align: left;
-    }
-    .crv {
-      background: #1a1a1a;
-    }
-    .rsi {
-      background: #151d24;
-    }
-    .sentiment {
-      background: #1d1a1a;
-    }
-    .support {
-      background: #1a1d1a;
-    }
-    .led {
-      display: inline-block;
-      width: 20px;
-      height: 10px;
-      margin: 0 3px;
-      background: #333;
-      border-radius: 1px;
-      box-shadow: 0 0 5px #000;
-    }
-    .led.on {
-      background: #00ff00;
-      box-shadow: 0 0 8px #0f0, 0 0 15px #0f0;
-    }
-    .led.blue {
-      background: #2196f3;
-      box-shadow: 0 0 8px #2196f3, 0 0 15px #2196f3;
-    }
-    .bar {
-      height: 8px;
-      background: #444;
-      border-radius: 3px;
-      margin-top: 5px;
-      position: relative;
-    }
-    .bar-fill {
-      height: 8px;
-      border-radius: 3px;
-      background: #e53935;
-      transition: width 0.3s ease;
-    }
+    body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
+    h1 { font-size: 1.6em; margin-bottom: 5px; color: #fff; }
+    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid #333; }
+    th { background: #222; }
     .green { color: #4caf50; }
     .red { color: #f44336; }
-    a {
-      color: #4fc3f7;
-      text-decoration: none;
-      font-weight: bold;
+    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
+    .analyseteil {
+      max-width: 700px;
+      margin: 40px auto;
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 12px;
     }
-    a:hover {
-      text-decoration: underline;
+    .block {
+      padding: 12px 20px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .block:nth-child(even) { background-color: #1f1f1f; }
+    .block:nth-child(odd) { background-color: #262626; }
+    .led {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin: 2px;
+      border-radius: 1px;
+      background-color: #00ff66;
+      box-shadow: 0 0 3px #00ff66, 0 0 6px #00ff66;
+    }
+    .led.off {
+      background-color: #444;
+      box-shadow: none;
+    }
+    .led.blue {
+      background-color: #2196f3;
+      box-shadow: 0 0 3px #2196f3, 0 0 6px #2196f3;
+    }
+    .price-bar {
+      width: 120px;
+      height: 6px;
+      background: #333;
+      border-radius: 4px;
+      margin: 5px auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .price-bar-fill {
+      height: 100%;
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 4px;
+      background-color: #f44336;
+      box-shadow: 0 0 2px #f44336, 0 0 4px #f44336;
+    }
+    .infoText {
+      font-size: 0.9em;
+      margin-top: 6px;
+      color: #ccc;
+      text-align: center;
     }
   </style>
 </head>
@@ -105,12 +82,32 @@
     </thead>
     <tbody id="daten"></tbody>
   </table>
-  <div class="crv" id="crv-section"></div>
-  <div class="rsi" id="rsi-section"></div>
-  <div class="sentiment" id="sentiment-section"></div>
-  <div class="support" id="support-section"></div>
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
+
+  <div class="analyseteil">
+    <div class="block">
+      <strong>CRV:</strong>
+      <span id="crv-leds"></span>
+      <div class="infoText" id="crv-text"></div>
+    </div>
+    <div class="block">
+      <strong>RSI:</strong>
+      <span id="rsi-leds"></span>
+      <div class="infoText" id="rsi-text"></div>
+    </div>
+    <div class="block">
+      <strong>Preisveränderung (24h):</strong>
+      <div class="price-bar">
+        <div class="price-bar-fill" id="price-bar-fill"></div>
+      </div>
+      <div class="infoText" id="sentiment"></div>
+    </div>
+    <div class="block">
+      <strong>Unterstützung:</strong> <span id="support" style="color: #aaa;"></span><br />
+      <strong>Widerstand:</strong> <span id="resistance" style="color: #aaa;"></span>
+    </div>
+  </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -124,12 +121,13 @@
 
         const kurs = parseFloat(data.lastPrice);
         const change = parseFloat(data.priceChangePercent);
+
         const einstieg = kurs * 0.995;
         const tp1 = kurs * 1.015;
         const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
-        const empfehlung = change > 0 ? "Long" : "Short";
-        const farbe = change > 0 ? "green" : "red";
+        const empfehlung = tp1 > einstieg ? "Long" : "Short";
+        const farbe = tp1 > einstieg ? "green" : "red";
 
         document.getElementById("daten").innerHTML = `
           <tr>
@@ -143,39 +141,56 @@
           </tr>
         `;
 
-        // CRV-Anzeige
-        const crv = 4;
-        const leds = Array.from({ length: 5 }, (_, i) => `<span class="led ${i < crv ? 'on' : ''}"></span>`).join('');
-        document.getElementById("crv-section").innerHTML = `
-          <strong>CRV:</strong><br>${leds}<br>
-          <span>CRV: ${crv.toFixed(2)} – Sehr gutes Verhältnis – Profi-Setup</span>
-        `;
-
-        // RSI-Anzeige (simuliert)
-        const rsi = 30;
-        const rsiLeds = Array.from({ length: 5 }, (_, i) => `<span class="led ${i < 2 ? 'blue' : ''}"></span>`).join('');
-        document.getElementById("rsi-section").innerHTML = `
-          <strong>RSI:</strong><br>${rsiLeds}<br>
-          <span>RSI: ${rsi} – überverkauft – mögliches Kaufsignal</span>
-        `;
-
-        // Preisänderung (Sentiment)
-        const sentimentColor = change > 0 ? '#4caf50' : '#e53935';
-        const sentimentBar = `<div class="bar"><div class="bar-fill" style="width:${Math.abs(change)}%; background:${sentimentColor}"></div></div>`;
-        document.getElementById("sentiment-section").innerHTML = `
-          <strong>Preisveränderung (24h):</strong><br>${change.toFixed(2)} % in 24h ${sentimentBar}
-        `;
-
-        // Unterstützungs- & Widerstandszonen
-        const support = (kurs * 0.99).toFixed(2);
-        const resistance = (kurs * 1.01).toFixed(2);
-        const highlightStyle = value => kurs >= value ? 'style="color:#4caf50"' : '';
-        document.getElementById("support-section").innerHTML = `
-          <strong>Unterstützung:</strong> <span ${highlightStyle(support)}>${support} USDT</span><br>
-          <strong>Widerstand:</strong> <span ${highlightStyle(resistance)}>${resistance} USDT</span>
-        `;
-
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
+
+        // CRV
+        const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
+        const crvValue = parseFloat(crv);
+        const crvLeds = document.getElementById("crv-leds");
+        const crvText = document.getElementById("crv-text");
+        let crvCount = Math.min(Math.floor(crvValue), 6);
+        for (let i = 0; i < 6; i++) {
+          const led = document.createElement("span");
+          led.className = "led" + (i < crvCount ? "" : " off");
+          crvLeds.appendChild(led);
+        }
+        let crvLabel = crvValue < 1 ? "Schlechtes Setup" : crvValue < 2 ? "Okay – hohes Risiko" : crvValue < 3 ? "Stabiles Setup" : "Sehr gutes Verhältnis – Profi-Setup";
+        crvText.textContent = `CRV: ${crv} — ${crvLabel}`;
+
+        // RSI (Demo)
+        const rsi = Math.floor(25 + Math.random() * 50);
+        const rsiLeds = document.getElementById("rsi-leds");
+        const rsiText = document.getElementById("rsi-text");
+        let rsiCount = Math.min(Math.floor((rsi - 20) / 10), 6);
+        for (let i = 0; i < 6; i++) {
+          const led = document.createElement("span");
+          led.className = i < rsiCount ? "led blue" : "led off";
+          rsiLeds.appendChild(led);
+        }
+        let rsiLabel = rsi < 30 ? "überverkauft — mögliches Kaufsignal" : rsi > 70 ? "überkauft — mögliches Verkaufssignal" : "neutral";
+        rsiText.textContent = `RSI: ${rsi} — ${rsiLabel}`;
+
+        // Preisveränderung
+        const bar = document.getElementById("price-bar-fill");
+        const sentiment = document.getElementById("sentiment");
+        let width = Math.min(Math.abs(change), 10) * 10;
+        bar.style.width = `${width}%`;
+        bar.style.backgroundColor = change >= 0 ? "#4caf50" : "#f44336";
+        bar.style.boxShadow = change >= 0
+          ? "0 0 2px #4caf50, 0 0 4px #4caf50"
+          : "0 0 2px #f44336, 0 0 4px #f44336";
+        sentiment.textContent = `${change.toFixed(2)} % in 24h`;
+
+        // Unterstützung & Widerstand
+        const support = einstieg - (einstieg * 0.005);
+        const resistance = tp1 + (tp1 * 0.004);
+        const supportEl = document.getElementById("support");
+        const resistanceEl = document.getElementById("resistance");
+        supportEl.textContent = `${support.toFixed(2)} USDT`;
+        resistanceEl.textContent = `${resistance.toFixed(2)} USDT`;
+        if (Math.abs(kurs - support) < 0.3) supportEl.style.color = "#4caf50";
+        if (Math.abs(kurs - resistance) < 0.3) resistanceEl.style.color = "#f44336";
+
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
       }
