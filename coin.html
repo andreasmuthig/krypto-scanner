@@ -112,11 +112,22 @@
       margin-bottom: 20px;
     }
 
-    #icon {
+    .notification-icon {
       position: absolute;
       top: 20px;
       right: 20px;
-      color: white;
+      cursor: pointer;
+    }
+
+    .tooltip {
+      position: absolute;
+      top: 60px;
+      right: 20px;
+      background: #222;
+      color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
     }
 
     a {
@@ -131,8 +142,12 @@
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
-  <div id="icon"><i data-feather="bell"></i></div>
   <div id="alert-box"></div>
+  <div class="notification-icon" onclick="hideTooltip()">
+    <i data-feather="bell"></i>
+  </div>
+  <div id="tooltip" class="tooltip">Möglicher Trade! Kurs nähert sich dem Einstieg.</div>
+
   <h1>Analyse: <span id="symbol">...</span></h1>
   <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
 
@@ -169,14 +184,20 @@
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
 
+  <audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" preload="auto"></audio>
+
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      if (window.feather) feather.replace();
-    });
+    feather.replace();
 
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
     document.getElementById("symbol").textContent = symbol;
+
+    let alarmActive = true;
+
+    function hideTooltip() {
+      document.getElementById("tooltip").style.display = "none";
+    }
 
     async function ladeAnalyse() {
       try {
@@ -241,11 +262,17 @@
           <strong>Unterstützung:</strong> ${unterstuetzung} USDT<br />
           <strong>Widerstand:</strong> ${widerstand} USDT`;
 
-        if (Math.abs(kurs - einstieg) < kurs * 0.01) {
-          const box = document.getElementById("alert-box");
-          box.textContent = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${kurs.toFixed(2)} Einstieg: ${einstieg.toFixed(2)}`;
-          box.style.display = "block";
+        // Alarmfunktion mit Sound und Tooltip
+        if (alarmActive && Math.abs(kurs - einstieg) < kurs * 0.01) {
+          const alertBox = document.getElementById("alert-box");
+          const tooltip = document.getElementById("tooltip");
+          const sound = document.getElementById("alert-sound");
+          alertBox.textContent = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${kurs.toFixed(2)} Einstieg: ${einstieg.toFixed(2)}`;
+          alertBox.style.display = "block";
+          tooltip.style.display = "block";
+          sound.play();
         }
+
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
       }
