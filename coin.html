@@ -3,142 +3,109 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
-  <script src="https://unpkg.com/feather-icons"></script>
   <style>
     body {
       background: #111;
       color: #eee;
       font-family: Arial, sans-serif;
-      margin: 0;
       padding: 0;
-    }
-
-    header {
-      background: #000;
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 2px solid #222;
-    }
-
-    header h1 {
-      font-size: 1.4em;
       margin: 0;
     }
-
-    header .timestamp {
+    h1 {
+      font-size: 1.6em;
+      margin-bottom: 5px;
+      color: #fff;
+    }
+    #updated {
       font-size: 0.8em;
       color: #777;
+      margin-bottom: 15px;
     }
-
-    header .icon {
-      color: #888;
-      cursor: pointer;
-    }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
     }
-
     th, td {
       padding: 10px;
       border-bottom: 1px solid #333;
       text-align: left;
     }
-
     th {
       background: #222;
     }
-
-    .grid {
-      display: flex;
-      margin-top: 20px;
+    .crv, .rsi, .sentiment, .support-box {
+      background: #1c1c1c;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 14px;
+      width: 600px;
     }
-
-    .info-panel {
-      width: 60%;
+    .crv-leds span,
+    .rsi-leds span {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+      border-radius: 2px;
+      background: #333;
+      box-shadow: 0 0 3px #000;
+    }
+    .led-on-green {
+      background: #00ff66;
+      box-shadow: 0 0 6px #00ff66;
+    }
+    .led-on-blue {
+      background: #3399ff;
+      box-shadow: 0 0 6px #3399ff;
+    }
+    .led-on-red {
+      background: #ff3b3b;
+      box-shadow: 0 0 6px #ff3b3b;
+    }
+    .bar {
+      height: 8px;
+      border-radius: 5px;
+      background: #333;
+      margin-top: 6px;
+      position: relative;
+    }
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: 5px;
+      background: #ff3b3b;
+      box-shadow: 0 0 6px #ff3b3b;
+    }
+    .support-box strong {
+      display: inline-block;
+      width: 120px;
+    }
+    a {
+      color: #4fc3f7;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .container {
+      display: flex;
+    }
+    .left-panel {
       padding: 20px;
     }
-
-    .section {
-      background: #1a1a1a;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 12px;
-    }
-
-    .led-strip, .rsi-strip {
-      display: flex;
-      gap: 4px;
-      margin: 6px 0;
-    }
-
-    .led, .rsi-led {
-      width: 20px;
-      height: 10px;
-      border-radius: 1px;
-      background: #444;
-    }
-
-    .led.on { background: lime; box-shadow: 0 0 5px lime; }
-    .rsi-led.on { background: dodgerblue; box-shadow: 0 0 5px dodgerblue; }
-
-    .bar {
-      background: #333;
-      border-radius: 5px;
-      overflow: hidden;
-      height: 10px;
-      margin: 4px 0;
-    }
-
-    .bar-fill {
-      height: 10px;
-      background: crimson;
-      box-shadow: 0 0 5px crimson;
-    }
-
-    .highlight {
-      font-weight: bold;
-      color: #ccc;
-    }
-
-    .support, .resistance {
-      margin-top: 8px;
-    }
-
-    .support span, .resistance span {
-      font-weight: bold;
-    }
-
-    .green { color: #4caf50; }
-    .red { color: #f44336; }
-
-    .background-frame {
-      width: 40%;
-      background: #1a1a1a;
-      border-left: 2px solid #222;
-    }
-
-    a {
-      display: block;
-      color: #4fc3f7;
-      margin-top: 40px;
-      text-decoration: none;
-      text-align: center;
+    .right-space {
+      flex-grow: 1;
+      background-color: #1a1a1a;
+      border-top-right-radius: 20px;
+      border-bottom-right-radius: 20px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Analyse: <span id="symbol">...</span></h1>
-      <div class="timestamp">Letzte Aktualisierung: <span id="zeit"></span></div>
-    </div>
-    <div class="icon" id="alarmIcon" data-feather="bell"></div>
-  </header>
+  <h1>Analyse: <span id="symbol">...</span></h1>
+  <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
 
   <table>
     <thead>
@@ -149,37 +116,36 @@
     <tbody id="daten"></tbody>
   </table>
 
-  <div class="grid">
-    <div class="info-panel">
-      <div class="section">
-        <div class="highlight">CRV:</div>
-        <div class="led-strip" id="crvLeds"></div>
-        <div id="crvText"></div>
+  <div class="container">
+    <div class="left-panel">
+      <div class="crv">
+        <div><strong>CRV:</strong> <span class="crv-leds" id="crv-leds"></span></div>
+        <div id="crv-text"></div>
       </div>
-      <div class="section">
-        <div class="highlight">RSI:</div>
-        <div class="rsi-strip" id="rsiLeds"></div>
-        <div id="rsiText"></div>
+
+      <div class="rsi">
+        <div><strong>RSI:</strong> <span class="rsi-leds" id="rsi-leds"></span></div>
+        <div id="rsi-text"></div>
       </div>
-      <div class="section">
-        <div class="highlight">Preisveränderung (24h):</div>
-        <div class="bar">
-          <div id="changeBar" class="bar-fill" style="width: 0%"></div>
-        </div>
-        <div id="changeText"></div>
+
+      <div class="sentiment">
+        <div><strong>Preisveränderung (24h):</strong></div>
+        <div id="change24"></div>
+        <div class="bar"><span id="change-bar" style="width: 0%"></span></div>
       </div>
-      <div class="section">
-        <div class="support">Unterstützung: <span id="support"></span> USDT</div>
-        <div class="resistance">Widerstand: <span id="resistance"></span> USDT</div>
+
+      <div class="support-box">
+        <div><strong>Unterstützung:</strong> <span id="support"></span> USDT</div>
+        <div><strong>Widerstand:</strong> <span id="resistance"></span> USDT</div>
       </div>
     </div>
-    <div class="background-frame"></div>
+    <div class="right-space"></div>
   </div>
 
-  <a href="index.html">← zurück zur Übersicht</a>
+  <br />
+  <a href="index.html">&larr; zurück zur Übersicht</a>
 
   <script>
-    feather.replace();
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
     document.getElementById("symbol").textContent = symbol;
@@ -191,40 +157,47 @@
 
         const kurs = parseFloat(data.lastPrice);
         const change = parseFloat(data.priceChangePercent);
-        const einstieg = (kurs * 0.995).toFixed(2);
-        const tp1 = (kurs * 1.015).toFixed(2);
-        const tp2 = (kurs * 1.03).toFixed(2);
-        const stop = (kurs * 0.99).toFixed(2);
-        const empfehlung = kurs > einstieg ? "Long" : "Short";
+        const einstieg = kurs * 0.995;
+        const tp1 = kurs * 1.015;
+        const tp2 = kurs * 1.03;
+        const stop = kurs * 0.99;
+        const empfehlung = tp1 > kurs ? "Long" : "Short";
+        const farbe = empfehlung === "Long" ? "green" : "red";
 
-        const rsi = 65; // Beispielwert, später ersetzen
         const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
+        const rsi = 65;
 
-        const crvLeds = Math.min(Math.floor(crv), 5);
-        document.getElementById("crvLeds").innerHTML = Array.from({length: 5}).map((_, i) => `<div class="led${i < crvLeds ? ' on' : ''}"></div>`).join("");
-        document.getElementById("crvText").textContent = `CRV: ${crv} — Sehr gutes Verhältnis – Profi-Setup`;
+        let crvText = "Mittel";
+        if (crv >= 3) crvText = "Sehr gutes Verhältnis — Profi-Setup";
+        else if (crv >= 2) crvText = "Gut — lohnenswert";
 
-        const rsiLeds = Math.min(Math.floor(rsi / 20), 5);
-        document.getElementById("rsiLeds").innerHTML = Array.from({length: 5}).map((_, i) => `<div class="rsi-led${i < rsiLeds ? ' on' : ''}"></div>`).join("");
-        document.getElementById("rsiText").textContent = `RSI: ${rsi} — ${rsi < 30 ? 'überverkauft' : rsi > 70 ? 'überkauft' : 'neutral'}`;
+        const ledsCrv = Math.min(5, Math.round(crv));
+        document.getElementById("crv-leds").innerHTML =
+          '<span class="' + 'led-on-green"></span>'.repeat(ledsCrv) +
+          '<span></span>'.repeat(5 - ledsCrv);
+        document.getElementById("crv-text").innerHTML = `CRV: ${crv} — ${crvText}`;
 
-        document.getElementById("changeText").innerHTML = `${change.toFixed(2)} % in 24h`;
-        document.getElementById("changeBar").style.width = `${Math.min(Math.abs(change), 10) * 10}%`;
+        const ledsRsi = Math.round((rsi / 100) * 5);
+        document.getElementById("rsi-leds").innerHTML =
+          '<span class="' + 'led-on-blue"></span>'.repeat(ledsRsi) +
+          '<span></span>'.repeat(5 - ledsRsi);
+        document.getElementById("rsi-text").innerHTML = `RSI: ${rsi} — neutral`;
 
-        const support = stop;
-        const resistance = tp1;
-        document.getElementById("support").textContent = support;
-        document.getElementById("resistance").textContent = resistance;
+        document.getElementById("change24").textContent = `${change.toFixed(2)} % in 24h`;
+        document.getElementById("change-bar").style.width = Math.min(Math.abs(change), 10) * 10 + "%";
+
+        document.getElementById("support").textContent = stop.toFixed(2);
+        document.getElementById("resistance").textContent = tp1.toFixed(2);
 
         document.getElementById("daten").innerHTML = `
           <tr>
             <td>${symbol}</td>
             <td>${kurs.toFixed(2)}</td>
-            <td>${einstieg}</td>
-            <td>${tp1} / ${tp2}</td>
-            <td>${stop}</td>
+            <td>${einstieg.toFixed(2)}</td>
+            <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+            <td>${stop.toFixed(2)}</td>
             <td>kurzfristig</td>
-            <td class="${empfehlung === 'Long' ? 'green' : 'red'}">${empfehlung}</td>
+            <td class="${farbe}"><strong>${empfehlung}</strong></td>
           </tr>
         `;
 
