@@ -3,79 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
+  <link href="https://unpkg.com/feather-icons" rel="stylesheet">
   <style>
     body {
       background: #111;
       color: #eee;
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
     }
-
-    h1 {
-      font-size: 1.6em;
-      margin-bottom: 5px;
-      color: #fff;
-      text-align: center;
-    }
-
-    #updated {
-      font-size: 0.8em;
-      color: #777;
-      text-align: center;
-      margin-bottom: 15px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th, td {
-      padding: 10px;
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background-color: #1a1a1a;
       border-bottom: 1px solid #333;
-      text-align: center;
     }
-
-    th {
+    .alert-icon {
+      position: relative;
+      cursor: pointer;
+    }
+    .alert-icon i {
+      color: #eee;
+      transition: color 0.3s;
+    }
+    .alert-icon.active i {
+      color: #ffcc00;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { filter: drop-shadow(0 0 2px #ffcc00); }
+      50% { filter: drop-shadow(0 0 8px #ffcc00); }
+      100% { filter: drop-shadow(0 0 2px #ffcc00); }
+    }
+    .alarm-box {
+      position: absolute;
+      top: 30px;
+      right: 0;
       background: #222;
+      color: #eee;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #000;
+      font-size: 0.9em;
+      display: none;
+      width: 220px;
     }
-
-    .green { color: #4caf50; }
-    .red { color: #f44336; }
-    .crv { font-weight: bold; color: #fff; }
-    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
-    a:hover { text-decoration: underline; }
-
+    .alarm-box.active {
+      display: block;
+    }
     .main-container {
       display: flex;
     }
-
     .left-panel {
       width: 420px;
       padding: 20px;
       background: #1a1a1a;
     }
-
     .right-panel {
       flex: 1;
       background: #181818;
     }
-
     .block {
       margin-bottom: 20px;
       background: #222;
       padding: 15px;
       border-radius: 12px;
     }
-
     .led-bar {
       display: flex;
       gap: 6px;
       margin: 5px 0 8px;
     }
-
     .led {
       width: 20px;
       height: 12px;
@@ -83,17 +82,14 @@
       background: #333;
       box-shadow: 0 0 2px #000;
     }
-
     .led.on.green {
       background: #00ff5e;
       box-shadow: 0 0 5px #00ff5e;
     }
-
     .led.on.blue {
       background: #3cf;
       box-shadow: 0 0 5px #3cf;
     }
-
     .bar-wrapper {
       background: #333;
       height: 6px;
@@ -101,23 +97,34 @@
       overflow: hidden;
       margin-top: 6px;
     }
-
     .bar-fill {
       height: 100%;
       background: #f44336;
       box-shadow: 0 0 5px #f44336;
     }
-
     .highlight-green { color: #00ff5e; }
     .highlight-red { color: #f44336; }
     .highlight { font-weight: bold; }
+    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Analyse: <span id="symbol">...</span></h1>
-  <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
+  <header>
+    <h2>Analyse: <span id="symbol">...</span></h2>
+    <div class="alert-icon" onclick="toggleAlarmBox()">
+      <i data-feather="bell"></i>
+      <div class="alarm-box" id="alarmBox">
+        <strong>Alarm:</strong><br>
+        Einstiegskurs erreicht für <span id="alarm-coin">...</span><br>
+        <a href="#" id="alarm-link">Trade jetzt prüfen</a>
+      </div>
+    </div>
+  </header>
 
-  <table>
+  <div id="updated" style="padding: 0 20px; font-size: 0.8em; color: #777;">Letzte Aktualisierung: <span id="zeit"></span></div>
+
+  <table style="width:100%; border-collapse:collapse; margin: 10px 0;">
     <thead>
       <tr>
         <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th><th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
@@ -133,25 +140,21 @@
         <div class="led-bar" id="crv-leds"></div>
         <div id="crv-text"></div>
       </div>
-
       <div class="block">
         <div><strong>RSI:</strong></div>
         <div class="led-bar" id="rsi-leds"></div>
         <div id="rsi-text"></div>
       </div>
-
       <div class="block">
         <div><strong>Preisveränderung (24h):</strong></div>
         <div class="bar-wrapper"><div class="bar-fill" id="price-bar" style="width: 0%;"></div></div>
         <div id="price-text"></div>
       </div>
-
       <div class="block">
         <div><strong>Unterstützung:</strong> <span id="support"></span></div>
         <div><strong>Widerstand:</strong> <span id="resistance"></span></div>
       </div>
     </div>
-
     <div class="right-panel"></div>
   </div>
 
@@ -159,10 +162,20 @@
     <a href="index.html">← zurück zur Übersicht</a>
   </div>
 
+  <audio id="alertSound" src="https://notificationsounds.com/storage/sounds/file-sounds-1151-pristine.mp3" preload="auto"></audio>
+
+  <script src="https://unpkg.com/feather-icons"></script>
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const symbol = params.get("symbol") || "BTCUSDT";
+    feather.replace();
+
+    const symbol = new URLSearchParams(window.location.search).get("symbol") || "BTCUSDT";
     document.getElementById("symbol").textContent = symbol;
+    document.getElementById("alarm-coin").textContent = symbol;
+    document.getElementById("alarm-link").href = `coin.html?symbol=${symbol}`;
+
+    function toggleAlarmBox() {
+      document.getElementById("alarmBox").classList.toggle("active");
+    }
 
     async function ladeAnalyse() {
       try {
@@ -171,8 +184,6 @@
 
         const kurs = parseFloat(data.lastPrice);
         const change = parseFloat(data.priceChangePercent);
-        const volumen = parseFloat(data.quoteVolume);
-
         const einstieg = kurs * 0.995;
         const tp1 = kurs * 1.015;
         const tp2 = kurs * 1.03;
@@ -182,13 +193,10 @@
 
         const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
         const crvWert = Math.min(Math.floor(crv), 5);
-
         const rsi = 30 + Math.round(Math.random() * 40);
         const rsiWert = Math.floor((rsi - 30) / 10);
-
         const support = stop.toFixed(2);
         const resistance = tp1.toFixed(2);
-
         const crvBeschreibung = crv >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crv >= 2 ? "Gutes Setup" : "Risiko hoch";
         const rsiBeschreibung = rsi < 35 ? "überverkauft – mögliches Kaufsignal" : rsi > 65 ? "überkauft – mögliches Verkaufssignal" : "neutral";
 
@@ -203,10 +211,9 @@
             <td class="${farbe}"><strong>${empfehlung}</strong></td>
           </tr>
         `;
-
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
 
-        // CRV LEDs
+        // LEDs
         const crvLeds = document.getElementById("crv-leds");
         crvLeds.innerHTML = "";
         for (let i = 0; i < 5; i++) {
@@ -216,7 +223,6 @@
         }
         document.getElementById("crv-text").textContent = `CRV: ${crv} — ${crvBeschreibung}`;
 
-        // RSI LEDs
         const rsiLeds = document.getElementById("rsi-leds");
         rsiLeds.innerHTML = "";
         for (let i = 0; i < 5; i++) {
@@ -226,26 +232,34 @@
         }
         document.getElementById("rsi-text").textContent = `RSI: ${rsi} — ${rsiBeschreibung}`;
 
-        // Preisveränderung
         const bar = document.getElementById("price-bar");
         const barWidth = Math.min(Math.abs(change), 10) * 10;
         bar.style.width = `${barWidth}%`;
         bar.style.background = change < 0 ? "#f44336" : "#00ff5e";
         bar.style.boxShadow = `0 0 5px ${change < 0 ? "#f44336" : "#00ff5e"}`;
-        document.getElementById("price-text").innerHTML = `${change.toFixed(2)} % in 24h`;
+        document.getElementById("price-text").textContent = `${change.toFixed(2)} % in 24h`;
 
-        // Unterstützungs- & Widerstandszonen
         document.getElementById("support").textContent = support + " USDT";
         document.getElementById("support").className = kurs <= stop ? "highlight-green" : "";
         document.getElementById("resistance").textContent = resistance + " USDT";
         document.getElementById("resistance").className = kurs >= tp1 ? "highlight-red" : "";
 
+        // Alarmbedingung (Demo: wenn Kurs unter Einstieg)
+        if (kurs <= einstieg) {
+          const alarmIcon = document.querySelector(".alert-icon");
+          const alarmBox = document.getElementById("alarmBox");
+          alarmIcon.classList.add("active");
+          alarmBox.classList.add("active");
+          document.getElementById("alertSound").play();
+        }
+
       } catch (err) {
-        document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
+        document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler: ${err.message}</td></tr>`;
       }
     }
 
     ladeAnalyse();
+    setInterval(ladeAnalyse, 60000);
   </script>
 </body>
 </html>
