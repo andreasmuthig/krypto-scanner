@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
-  <script src="https://unpkg.com/feather-icons"></script>
   <style>
     body {
       background: #111;
@@ -45,7 +44,6 @@
       border-radius: 16px;
       padding: 10px 15px;
       margin-bottom: 10px;
-      width: 45%;
     }
 
     .led-bar {
@@ -89,7 +87,8 @@
     #details {
       display: flex;
       flex-direction: row;
-      justify-content: flex-start;
+      justify-content: space-between;
+      gap: 20px;
     }
 
     #metrics {
@@ -99,8 +98,18 @@
     #spacer {
       width: 50%;
       background: #1a1a1a;
-      margin-left: 20px;
       border-radius: 16px;
+    }
+
+    #alert-box {
+      display: none;
+      padding: 15px;
+      background-color: #f44336;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+      border-radius: 10px;
+      margin-bottom: 20px;
     }
 
     a {
@@ -112,8 +121,10 @@
       text-decoration: underline;
     }
   </style>
+  <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
+  <div id="alert-box"></div>
   <h1>Analyse: <span id="symbol">...</span></h1>
   <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
 
@@ -151,6 +162,8 @@
   <a href="index.html">← zurück zur Übersicht</a>
 
   <script>
+    feather.replace();
+
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
     document.getElementById("symbol").textContent = symbol;
@@ -217,15 +230,19 @@
         document.getElementById("levels").innerHTML = `
           <strong>Unterstützung:</strong> ${unterstuetzung} USDT<br />
           <strong>Widerstand:</strong> ${widerstand} USDT`;
+
+        // Alarmfunktion
+        if (Math.abs(kurs - einstieg) < kurs * 0.01) {
+          const box = document.getElementById("alert-box");
+          box.textContent = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${kurs.toFixed(2)} Einstieg: ${einstieg.toFixed(2)}`;
+          box.style.display = "block";
+        }
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
       }
     }
 
     ladeAnalyse();
-  </script>
-  <script>
-    feather.replace();
   </script>
 </body>
 </html>
