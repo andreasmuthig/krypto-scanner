@@ -13,17 +13,44 @@
     .crv { font-weight: bold; color: #fff; }
     .green { color: #4caf50; }
     .red { color: #f44336; }
-    .balken-container { display: flex; align-items: center; gap: 6px; }
-    .balken { width: 60px; height: 8px; border-radius: 4px; background: #444; position: relative; overflow: hidden; }
-    .balken-inner { height: 100%; transition: width 0.3s ease-in-out; }
-    .balken-inner.positiv { background-color: #4caf50; }
-    .balken-inner.negativ { background-color: #f44336; }
-    .led-strip { display: flex; justify-content: center; gap: 5px; margin-top: 12px; margin-bottom: 4px; }
-    .led { width: 14px; height: 14px; border-radius: 4px; background: #333; box-shadow: inset 0 0 3px #000; }
-    .led.on { box-shadow: 0 0 6px #0f0, 0 0 10px #0f0; background-color: #6f6; }
-    .led-label { font-size: 0.75em; color: #999; }
     a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; }
+
+    .bar-container {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin: 10px 0;
+    }
+
+    .led-bar {
+      width: 18px;
+      height: 12px;
+      background: #333;
+      border-radius: 1px;
+      box-shadow: inset 0 0 3px #000;
+    }
+
+    .led-bar.on {
+      background: #0f0;
+      box-shadow: 0 0 6px #0f0, 0 0 10px #0f0;
+    }
+
+    .led-bar.warn {
+      background: orange;
+      box-shadow: 0 0 6px orange;
+    }
+
+    .led-bar.danger {
+      background: red;
+      box-shadow: 0 0 6px red;
+    }
+
+    .label {
+      font-size: 0.9em;
+      color: #ccc;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -59,33 +86,15 @@
         const tp1 = kurs * 1.015;
         const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
+        const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
 
-        // Empfehlung basierend auf realem Setup statt nur Veränderung
-        let empfehlung;
-        if (tp1 > kurs && einstieg < kurs) {
-          empfehlung = "Long";
-        } else if (tp1 < kurs && einstieg > kurs) {
-          empfehlung = "Short";
-        } else {
-          empfehlung = "Neutral";
-        }
-
-        const farbe = empfehlung === "Long" ? "green" : empfehlung === "Short" ? "red" : "";
-
-        // Kurszelle mit Mini-Balken
-        const kursZelle = `
-          <div class="balken-container">
-            ${kurs.toFixed(2)}
-            <div class="balken">
-              <div class="balken-inner ${change >= 0 ? 'positiv' : 'negativ'}" style="width: ${Math.min(Math.abs(change), 10) * 6}px"></div>
-            </div>
-          </div>
-        `;
+        const empfehlung = tp1 > kurs ? "Long" : "Short";
+        const farbe = tp1 > kurs ? "green" : "red";
 
         document.getElementById("daten").innerHTML = `
           <tr>
             <td>${symbol}</td>
-            <td>${kursZelle}</td>
+            <td>${kurs.toFixed(2)}</td>
             <td>${einstieg.toFixed(2)}</td>
             <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
             <td>${stop.toFixed(2)}</td>
@@ -94,7 +103,22 @@
           </tr>
         `;
 
-        // Zeit aktualisieren
+        const ledLevel = crv >= 4 ? 5 : crv >= 3 ? 4 : crv >= 2 ? 3 : crv >= 1.5 ? 2 : 1;
+
+        const leds = Array.from({ length: 5 }, (_, i) => {
+          let cls = "led-bar";
+          if (i < ledLevel) cls += " on";
+          return `<div class="${cls}"></div>`;
+        }).join("");
+
+        document.getElementById("indikatoren").innerHTML = `
+          <div style="margin-top: 30px">
+            <div style="color: #ccc; font-weight: bold;">CRV</div>
+            <div class="bar-container">${leds}</div>
+            <div class="label">CRV: ${crv} — ${crv >= 4 ? "Sehr gutes Verhältnis – Profi-Setup" : crv >= 2 ? "Gutes Setup" : "Verbesserungswürdig"}</div>
+          </div>
+        `;
+
         document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
