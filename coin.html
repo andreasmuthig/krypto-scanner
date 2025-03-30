@@ -3,27 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
+    h1 { font-size: 1.6em; margin-bottom: 5px; color: #fff; }
+    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid #333; }
+    th { background: #222; }
+    .crv { font-weight: bold; color: #fff; }
+    .green { color: #4caf50; }
+    .red { color: #f44336; }
+    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
   <h1>Analyse: <span id="symbol">...</span></h1>
   <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
-
   <table>
     <thead>
       <tr>
-        <th>Asset</th>
-        <th>Kurs</th>
-        <th>Einstieg</th>
-        <th>Take-Profit</th>
-        <th>Stop-Loss</th>
-        <th>Haltezeit</th>
-        <th>Empfehlung</th>
+        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th><th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
       </tr>
     </thead>
     <tbody id="daten"></tbody>
   </table>
-
   <br />
   <a href="index.html">← zurück zur Übersicht</a>
 
@@ -39,6 +43,7 @@
 
         const kurs = parseFloat(data.lastPrice);
         const change = parseFloat(data.priceChangePercent);
+        const volumen = parseFloat(data.quoteVolume);
 
         const einstieg = kurs * 0.995;
         const tp1 = kurs * 1.015;

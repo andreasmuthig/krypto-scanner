@@ -1,41 +1,7 @@
 [
-  {
-    "symbol": "BTCUSDT",
-    "price": 68800.00,
-    "entry": 68600.00,
-    "tp1": 69050.00,
-    "tp2": 69500.00,
-    "sl": 68400.00,
-    "hold": "30–90 Min.",
-    "recommendation": "Kaufen",
-    "crv": 3.4,
-    "rsi": 55,
-    "change24h": 2.3
-  },
-  {
-    "symbol": "ETHUSDT",
-    "price": 3450.00,
-    "entry": 3420.00,
-    "tp1": 3480.00,
-    "tp2": 3520.00,
-    "sl": 3390.00,
-    "hold": "1–2 Std.",
-    "recommendation": "Kaufen",
-    "crv": 2.6,
-    "rsi": 48,
-    "change24h": 1.7
-  },
-  {
-    "symbol": "SOLUSDT",
-    "price": 152.30,
-    "entry": 151.20,
-    "tp1": 154.00,
-    "tp2": 156.50,
-    "sl": 149.80,
-    "hold": "45–120 Min.",
-    "recommendation": "Beobachten",
-    "crv": 2.1,
-    "rsi": 61,
-    "change24h": -0.5
-  }
+  "BTCUSDT",
+  "ETHUSDT",
+  "SOLUSDT",
+  "XRPUSDT",
+  "ADAUSDT"
 ]
