@@ -1,7 +1,15 @@
 [
-  "BTCUSDT",
-  "ETHUSDT",
-  "SOLUSDT",
-  "XRPUSDT",
-  "ADAUSDT"
+  {
+    "symbol": "XRPUSDT",
+    "price": 82792.06,
+    "entry": 82378.06,
+    "tp1": 84000,
+    "tp2": 86000,
+    "sl": 81000,
+    "hold": "kurzfristig",
+    "recommendation": "Long",
+    "crv": 4,
+    "rsi": 65,
+    "change24h": 1.5
+  }
 ]
