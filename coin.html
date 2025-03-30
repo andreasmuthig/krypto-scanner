@@ -10,35 +10,23 @@
   <script src="alarm.js" defer></script>
 </head>
 <body>
+  <div id="alarm-container"></div>
+  <div id="alarm-bell"><i data-feather="bell"></i></div>
 
-<div id="alarm-container"></div>
-<div id="alarm-bell"><i data-feather="bell"></i></div>
+  <h1 id="headline">Analyse: <span id="symbol">...</span></h1>
+  <div id="updated">Letzte Aktualisierung: <span id="update-time">--:--:--</span></div>
 
-<div class="container">
-  <h1 id="symbol">Analyse: ...</h1>
-  <div class="text-muted">Letzte Aktualisierung: <span id="update-time">--:--:--</span></div>
-
-  <table class="table">
+  <table>
     <thead>
       <tr>
-        <th>Asset</th>
-        <th>Kurs</th>
-        <th>Einstieg</th>
-        <th>Take-Profit</th>
-        <th>Stop-Loss</th>
-        <th>Haltezeit</th>
-        <th>Empfehlung</th>
+        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th>
+        <th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td id="asset">-</td>
-        <td id="price">-</td>
-        <td id="entry">-</td>
-        <td id="tp">-</td>
-        <td id="sl">-</td>
-        <td id="hold">-</td>
-        <td id="recommendation">-</td>
+        <td id="asset">-</td><td id="price">-</td><td id="entry">-</td><td id="tp">-</td>
+        <td id="sl">-</td><td id="hold">-</td><td id="recommendation">-</td>
       </tr>
     </tbody>
   </table>
@@ -46,30 +34,26 @@
   <div class="metrics">
     <div class="metric-box">
       <strong>CRV:</strong>
-      <div class="led-bar" id="crv-leds"></div>
-      <div id="crv-label" class="text-muted"></div>
+      <div id="crv-leds" class="led-bar"></div>
+      <div id="crv-label"></div>
     </div>
     <div class="metric-box">
       <strong>RSI:</strong>
-      <div class="led-bar" id="rsi-leds"></div>
-      <div id="rsi-label" class="text-muted"></div>
+      <div id="rsi-leds" class="led-bar"></div>
+      <div id="rsi-label"></div>
     </div>
     <div class="metric-box">
       <strong>Preisveränderung (24h):</strong>
-      <div id="change-label" class="text-muted"></div>
-      <div class="bar"><div class="bar-fill" id="change-bar"></div></div>
+      <div class="bar"><div id="change-bar" class="bar-fill"></div></div>
+      <div id="change-label"></div>
     </div>
     <div class="metric-box">
-      <strong>Unterstützung:</strong> <span id="support"></span><br>
+      <strong>Unterstützung:</strong> <span id="support"></span><br/>
       <strong>Widerstand:</strong> <span id="resistance"></span>
     </div>
   </div>
 
   <p><a href="index.html">← zurück zur Übersicht</a></p>
-</div>
-
-<script>
-  feather.replace();
-</script>
+  <script>feather.replace();</script>
 </body>
 </html>
