@@ -3,83 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coin Analyse</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Coin-Analyse</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/feather-icons"></script>
   <style>
-    .alarm-badge {
-      position: fixed;
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #222;
+    }
+    .badge-alert {
+      position: absolute;
       top: 20px;
-      right: 60px;
+      right: 80px;
       background: #f44336;
       color: white;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.8rem;
+      padding: 10px 16px;
       font-weight: bold;
-      box-shadow: 0 0 10px #f44336;
+      font-size: 0.9rem;
+      border-radius: 10px;
+      box-shadow: 0 0 18px #f44336;
+      max-width: 400px;
       cursor: pointer;
-      z-index: 9999;
     }
-    .glow {
-      filter: drop-shadow(0 0 5px red) drop-shadow(0 0 10px red);
+    .alarm-bell {
+      position: absolute;
+      top: 22px;
+      right: 20px;
+      color: white;
+      font-size: 24px;
+    }
+    .alarm-bell.glow {
+      filter: drop-shadow(0 0 8px red);
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Analyse: <span id="coin-name">...</span></h1>
-    <div id="alarm-badge" class="alarm-badge" style="display: none;"></div>
-    <i id="alarm-bell" class="bell-icon" style="position: absolute; top: 20px; right: 20px; font-size: 1.4rem; cursor: pointer;">🔔</i>
-  </header>
+  <div class="container">
+    <div id="alarm-container"></div>
+    <div class="alarm-bell" id="alarm-bell">
+      <i data-feather="bell"></i>
+    </div>
 
-  <!-- Dein bisheriger HTML-Inhalt für Kursdaten etc. -->
+    <h2 id="title">Analyse: ...</h2>
+    <p id="timestamp">Letzte Aktualisierung: </p>
 
+    <table>
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Kurs</th>
+          <th>Einstieg</th>
+          <th>Take-Profit</th>
+          <th>Stop-Loss</th>
+          <th>Haltezeit</th>
+          <th>Empfehlung</th>
+        </tr>
+      </thead>
+      <tbody id="analysis-table">
+        <!-- Analysewerte werden hier eingefügt -->
+      </tbody>
+    </table>
+
+    <div id="analyse-info">
+      <!-- Technische Analysewerte -->
+    </div>
+
+    <a href="index.html" style="color:#00aaff">← zurück zur Übersicht</a>
+  </div>
+
+  <script src="analyse.js"></script>
+  <script src="alarm.js"></script>
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT"];
-    let alarmActive = false;
-    let activeSymbol = "";
-
-    async function checkWatchlist() {
-      for (const symbol of watchlist) {
-        try {
-          const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-          const data = await res.json();
-          const price = parseFloat(data.price);
-          const entry = price * 0.995;
-          const trigger = entry * 1.01;
-
-          if (price <= trigger && !alarmActive) {
-            alarmActive = true;
-            activeSymbol = symbol;
-            showAlarm(symbol, price, entry);
-            break;
-          }
-        } catch (err) {
-          console.error("Fehler beim Abrufen des Preises:", err);
-        }
-      }
-      setTimeout(checkWatchlist, 10000); // alle 10s prüfen
-    }
-
-    function showAlarm(symbol, current, entry) {
-      const badge = document.getElementById("alarm-badge");
-      badge.textContent = `${symbol} nähert sich dem Einstiegskurs! Aktueller Kurs: ${current.toFixed(2)} | Einstieg: ${entry.toFixed(2)}`;
-      badge.style.display = "block";
-      badge.onclick = () => {
-        alarmActive = false;
-        badge.style.display = "none";
-        document.getElementById("alarm-bell").classList.remove("glow");
-        window.location.href = `coin.html?symbol=${symbol}`;
-      };
-
-      const bell = document.getElementById("alarm-bell");
-      if (bell) bell.classList.add("glow");
-
-      const audio = new Audio("alarm.mp3");
-      audio.play();
-    }
-
-    checkWatchlist();
+    feather.replace();
   </script>
 </body>
 </html>
