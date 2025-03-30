@@ -1,4 +1,7 @@
 [
-  { "symbol": "BTCUSDT", "price": 83000, "entry": 82000, "tp1": 84000, "tp2": 85000, "sl": 81000, "hold": "kurzfristig", "recommendation": "Long", "crv": 4, "rsi": 65, "change24h": -1.5 },
-  { "symbol": "ETHUSDT", "price": 3000, "entry": 2900, "tp1": 3100, "tp2": 3200, "sl": 2800, "hold": "kurzfristig", "recommendation": "Long", "crv": 3, "rsi": 55, "change24h": -0.8 }
+  "BTCUSDT",
+  "ETHUSDT",
+  "SOLUSDT",
+  "XRPUSDT",
+  "ADAUSDT"
 ]

@@ -2,58 +2,75 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Coin Analyse</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script src="https://unpkg.com/feather-icons"></script>
-  <script src="analyse.js" defer></script>
-  <script src="alarm.js" defer></script>
+  <title>Coin-Analyse</title>
+  <style>
+    body { background: #111; color: #eee; font-family: Arial; padding: 20px; text-align: center; }
+    h1 { font-size: 1.6em; margin-bottom: 5px; color: #fff; }
+    #updated { font-size: 0.8em; color: #777; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 10px; border-bottom: 1px solid #333; }
+    th { background: #222; }
+    .crv { font-weight: bold; color: #fff; }
+    .green { color: #4caf50; }
+    .red { color: #f44336; }
+    a { color: #4fc3f7; text-decoration: none; font-weight: bold; }
+    a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
-  <div id="alarm-container"></div>
-  <div id="alarm-bell"><i data-feather="bell"></i></div>
-
-  <h1 id="headline">Analyse: <span id="symbol">...</span></h1>
-  <div id="updated">Letzte Aktualisierung: <span id="update-time">--:--:--</span></div>
-
+  <h1>Analyse: <span id="symbol">...</span></h1>
+  <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
   <table>
     <thead>
       <tr>
-        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th>
-        <th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
+        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th><th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
       </tr>
     </thead>
-    <tbody>
-      <tr>
-        <td id="asset">-</td><td id="price">-</td><td id="entry">-</td><td id="tp">-</td>
-        <td id="sl">-</td><td id="hold">-</td><td id="recommendation">-</td>
-      </tr>
-    </tbody>
+    <tbody id="daten"></tbody>
   </table>
+  <br />
+  <a href="index.html">← zurück zur Übersicht</a>
 
-  <div class="metrics">
-    <div class="metric-box">
-      <strong>CRV:</strong>
-      <div id="crv-leds" class="led-bar"></div>
-      <div id="crv-label"></div>
-    </div>
-    <div class="metric-box">
-      <strong>RSI:</strong>
-      <div id="rsi-leds" class="led-bar"></div>
-      <div id="rsi-label"></div>
-    </div>
-    <div class="metric-box">
-      <strong>Preisveränderung (24h):</strong>
-      <div class="bar"><div id="change-bar" class="bar-fill"></div></div>
-      <div id="change-label"></div>
-    </div>
-    <div class="metric-box">
-      <strong>Unterstützung:</strong> <span id="support"></span><br/>
-      <strong>Widerstand:</strong> <span id="resistance"></span>
-    </div>
-  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get("symbol") || "BTCUSDT";
+    document.getElementById("symbol").textContent = symbol;
 
-  <p><a href="index.html">← zurück zur Übersicht</a></p>
-  <script>feather.replace();</script>
+    async function ladeAnalyse() {
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+        const data = await res.json();
+
+        const kurs = parseFloat(data.lastPrice);
+        const change = parseFloat(data.priceChangePercent);
+        const volumen = parseFloat(data.quoteVolume);
+
+        const einstieg = kurs * 0.995;
+        const tp1 = kurs * 1.015;
+        const tp2 = kurs * 1.03;
+        const stop = kurs * 0.99;
+        const empfehlung = change > 0 ? "Long" : "Short";
+        const farbe = change > 0 ? "green" : "red";
+
+        document.getElementById("daten").innerHTML = `
+          <tr>
+            <td>${symbol}</td>
+            <td>${kurs.toFixed(2)}</td>
+            <td>${einstieg.toFixed(2)}</td>
+            <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+            <td>${stop.toFixed(2)}</td>
+            <td>kurzfristig</td>
+            <td class="${farbe}"><strong>${empfehlung}</strong></td>
+          </tr>
+        `;
+
+        document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
+      }
+    }
+
+    ladeAnalyse();
+  </script>
 </body>
 </html>
