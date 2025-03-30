@@ -1,21 +1,53 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Krypto-Scanner</title>
+  <meta charset="UTF-8">
+  <title>Krypto-Scanner Übersicht</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://unpkg.com/feather-icons"></script>
   <style>
-    .coin-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 12px;
-      margin: 10px auto;
-      width: 90%;
-      max-width: 400px;
+    body {
+      background: #111;
       color: #eee;
-      box-shadow: 0 0 10px #000;
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #fff;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+
+    th {
+      background: #222;
+      color: #fff;
+    }
+
+    .green {
+      color: #00ff88;
+    }
+
+    .red {
+      color: #ff4444;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 20px;
+      font-size: 1em;
+      color: #aaa;
     }
 
     .lab-link {
@@ -29,64 +61,83 @@
       text-decoration: none;
       font-size: 0.95em;
       text-shadow: 0 0 5px #00ff88, 0 0 10px #00ff88;
-      transition: transform 0.2s ease;
     }
 
     .lab-link:hover {
       transform: scale(1.05);
     }
-
-    .lab-link i {
-      margin-right: 6px;
-    }
   </style>
 </head>
 <body>
-  <h1>Krypto-Scanner</h1>
-  <div id="coin-container">Daten werden geladen...</div>
 
-  <!-- LAB-Link unten links -->
+  <h1>Krypto-Scanner Übersicht</h1>
+  <div id="container">
+    <div class="loader">Lade Daten...</div>
+  </div>
+
   <a href="lab.html" class="lab-link">
-    <i data-feather="cpu"></i> LAB öffnen
+    🧪 LAB öffnen
   </a>
 
   <script>
-    // Icons laden, nachdem Seite fertig ist
-    window.addEventListener("DOMContentLoaded", () => {
-      feather.replace();
-    });
+    async function ladeCoins() {
+      const container = document.getElementById("container");
+      try {
+        const res = await fetch("watchlist.json");
+        const coins = await res.json();
 
-    // Coins laden
-    fetch("watchlist.json")
-      .then(res => res.json())
-      .then(watchlist => {
-        const container = document.getElementById("coin-container");
         container.innerHTML = ""; // leeren
-        watchlist.forEach(symbol => {
-          fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
-            .then(res => res.json())
-            .then(data => {
-              const preis = parseFloat(data.lastPrice).toFixed(2);
-              const change = parseFloat(data.priceChangePercent).toFixed(2);
-              const farbe = change > 0 ? "green" : "red";
 
-              const div = document.createElement("div");
-              div.className = "coin-box";
-              div.innerHTML = `
-                <strong>${symbol}</strong><br>
-                Kurs: ${preis} USD<br>
-                Veränderung: <span style="color:${farbe}">${change}%</span>
-              `;
-              container.appendChild(div);
-            })
-            .catch(err => {
-              container.innerHTML += `<div class="coin-box">Fehler bei ${symbol}</div>`;
-            });
-        });
-      })
-      .catch(() => {
-        document.getElementById("coin-container").innerHTML = "Fehler beim Laden der Watchlist.";
-      });
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Kurs</th>
+              <th>Einstieg</th>
+              <th>Take-Profit</th>
+              <th>Stop-Loss</th>
+              <th>Haltezeit</th>
+              <th>Empfehlung</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        `;
+        container.appendChild(table);
+
+        const body = document.getElementById("rows");
+
+        for (const symbol of coins) {
+          const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+          const data = await res.json();
+
+          const kurs = parseFloat(data.lastPrice);
+          const einstieg = (kurs * 0.995).toFixed(2);
+          const tp1 = (kurs * 1.015).toFixed(2);
+          const tp2 = (kurs * 1.03).toFixed(2);
+          const stop = (kurs * 0.99).toFixed(2);
+          const empfehlung = parseFloat(data.priceChangePercent) > 0 ? "Long" : "Short";
+          const farbe = empfehlung === "Long" ? "green" : "red";
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${symbol}</td>
+            <td>${kurs.toFixed(2)}</td>
+            <td>${einstieg}</td>
+            <td>${tp1} / ${tp2}</td>
+            <td>${stop}</td>
+            <td>kurzfristig</td>
+            <td class="${farbe}"><strong>${empfehlung}</strong></td>
+          `;
+          body.appendChild(row);
+        }
+      } catch (err) {
+        container.innerHTML = "<p style='color: red;'>Fehler beim Laden der Daten.</p>";
+      }
+    }
+
+    ladeCoins();
   </script>
+
 </body>
 </html>
