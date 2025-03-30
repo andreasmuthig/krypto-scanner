@@ -1,7 +1,13 @@
-[
-  "BTCUSDT",
-  "ETHUSDT",
-  "SOLUSDT",
-  "XRPUSDT",
-  "ADAUSDT"
-]
+{
+  "coins": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "DOGE",
+    "ADA",
+    "DOT",
+    "LINK",
+    "AVAX"
+  ]
+}
