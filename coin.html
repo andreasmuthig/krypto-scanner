@@ -3,6 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <title>Coin-Analyse</title>
+  // alarm.js – Watchlist-Alarm für Einstieg mit rechts oben platziertem Badge
+
+const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT"];
+let alarmActive = false;
+let activeSymbol = "";
+
+async function checkWatchlist() {
+  for (const symbol of watchlist) {
+    try {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+      const data = await res.json();
+      const price = parseFloat(data.price);
+      const entry = price * 0.995;
+      const trigger = entry * 1.01;
+
+      if (price <= trigger && !alarmActive) {
+        alarmActive = true;
+        activeSymbol = symbol;
+        showAlarm(symbol, price, entry);
+        break;
+      }
+    } catch (err) {
+      console.error("Fehler beim Abrufen des Preises:", err);
+    }
+  }
+  setTimeout(checkWatchlist, 10000); // alle 10s prüfen
+}
+
+function showAlarm(symbol, current, entry) {
+  const bell = document.getElementById("alarm-bell");
+  if (bell) bell.classList.add("glow");
+
+  const badge = document.createElement("div");
+  badge.id = "alarm-badge";
+  badge.innerHTML = `${symbol} nähert sich dem Einstiegskurs!<br>Aktueller Kurs: ${current.toFixed(2)} | Einstieg: ${entry.toFixed(2)}`;
+  badge.style.position = "fixed";
+  badge.style.top = "18px";
+  badge.style.right = "60px";
+  badge.style.background = "#f44336";
+  badge.style.padding = "10px 14px";
+  badge.style.borderRadius = "12px";
+  badge.style.color = "white";
+  badge.style.fontWeight = "bold";
+  badge.style.cursor = "pointer";
+  badge.style.boxShadow = "0 0 16px #f44336";
+  badge.style.zIndex = "10000";
+  badge.style.fontSize = "0.85rem";
+  badge.style.maxWidth = "280px";
+  badge.style.textAlign = "center";
+  badge.style.lineHeight = "1.4";
+
+  badge.onclick = () => {
+    alarmActive = false;
+    badge.remove();
+    if (bell) bell.classList.remove("glow");
+    window.location.href = `coin.html?symbol=${symbol}`;
+  };
+
+  document.body.appendChild(badge);
+
+  const audio = new Audio("alarm.mp3");
+  audio.play();
+}
+
+checkWatchlist();
+
   <style>
     body {
       background: #111;
