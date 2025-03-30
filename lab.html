@@ -5,32 +5,157 @@
   <title>LAB – Testbereich</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    .warning {
-      font-size: 1.2em;
-      color: #00ff88;
-      text-shadow: 0 0 5px #00ff88, 0 0 10px #00ff88;
-      animation: blink 2s infinite ease-in-out;
-      font-weight: bold;
-      margin-bottom: 20px;
+    body {
+      background: #111;
+      color: #eee;
+      font-family: Arial;
+      padding: 20px;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+    .warnbox {
+      background: #ff4444;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      box-shadow: 0 0 10px #ff0000;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    th {
+      background-color: #222;
+      color: #fff;
+    }
+
+    .box {
+      background: #1b1b1b;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .led-bar {
+      display: flex;
+      gap: 4px;
+      margin: 8px 0;
+    }
+
+    .led {
+      width: 16px;
+      height: 16px;
+      background: #333;
+      border-radius: 3px;
+      box-shadow: inset 0 0 3px #000;
+    }
+
+    .led.on.green {
+      background: #00ff88;
+      box-shadow: 0 0 8px #00ff88;
+    }
+
+    .led.on.gray {
+      background: #888;
+      box-shadow: 0 0 5px #888;
+    }
+
+    .dot-red {
+      width: 10px;
+      height: 10px;
+      background: red;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      box-shadow: 0 0 6px red;
+    }
+
+    .back-link {
+      color: #4fc3f7;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="warning">⚠️ Künstliche Intelligenz im Test ⚠️</div>
 
-  <h1>🧪 Testbereich – LAB</h1>
-  <p>Hier kannst du neue Funktionen ausprobieren, ohne die Hauptseite zu beeinflussen.</p>
-
-  <div id="testzone">
-    <p style="color: #888;">Noch keine Tests vorhanden.</p>
+  <div class="warnbox">
+    BTCUSDT nähert sich dem Einstiegskurs!<br>
+    Aktueller Kurs: 83384.81 | Einstieg: 82967.89
   </div>
 
-  <br />
-  <a href="index.html">← Zurück zur Hauptseite</a>
+  <div id="updated" style="font-size: 0.85em; color: #888; margin-bottom: 10px;">
+    Letzte Aktualisierung: 10:56:59
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th>
+        <th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>BTCUSDT</td>
+        <td>83384.81</td>
+        <td>82967.89</td>
+        <td>84635.58 / 85886.35</td>
+        <td>82550.96</td>
+        <td>kurzfristig</td>
+        <td style="color: #00ff88;"><strong>Long</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box">
+    <strong>CRV:</strong>
+    <div class="led-bar">
+      <div class="led on green"></div>
+      <div class="led on green"></div>
+      <div class="led on green"></div>
+      <div class="led on green"></div>
+    </div>
+    CRV: 4.00 — Sehr gutes Verhältnis – Profi-Setup
+  </div>
+
+  <div class="box">
+    <strong>RSI:</strong>
+    <div class="led-bar">
+      <div class="led on gray"></div>
+      <div class="led"></div>
+      <div class="led"></div>
+      <div class="led"></div>
+    </div>
+    RSI: 9 — überverkauft – mögliches Kaufsignal
+  </div>
+
+  <div class="box">
+    <strong>Preisveränderung (24h):</strong><br>
+    <span class="dot-red"></span> -0.66 % in 24h
+  </div>
+
+  <div class="box">
+    <strong>Unterstützung:</strong> 82550.96 USDT<br>
+    <strong>Widerstand:</strong> 84635.58 USDT
+  </div>
+
+  <br>
+  <a href="index.html" class="back-link">← zurück zur Übersicht</a>
 </body>
 </html>
