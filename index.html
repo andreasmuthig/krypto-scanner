@@ -6,6 +6,18 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/feather-icons"></script>
   <style>
+    .coin-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 10px auto;
+      width: 90%;
+      max-width: 400px;
+      color: #eee;
+      box-shadow: 0 0 10px #000;
+    }
+
     .lab-link {
       position: fixed;
       bottom: 20px;
@@ -31,7 +43,7 @@
 </head>
 <body>
   <h1>Krypto-Scanner</h1>
-  <p>Hier könnten deine Coin-Analysen erscheinen.</p>
+  <div id="coin-container">Daten werden geladen...</div>
 
   <!-- LAB-Link unten links -->
   <a href="lab.html" class="lab-link">
@@ -39,7 +51,42 @@
   </a>
 
   <script>
-    feather.replace();
+    // Icons laden, nachdem Seite fertig ist
+    window.addEventListener("DOMContentLoaded", () => {
+      feather.replace();
+    });
+
+    // Coins laden
+    fetch("watchlist.json")
+      .then(res => res.json())
+      .then(watchlist => {
+        const container = document.getElementById("coin-container");
+        container.innerHTML = ""; // leeren
+        watchlist.forEach(symbol => {
+          fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+            .then(res => res.json())
+            .then(data => {
+              const preis = parseFloat(data.lastPrice).toFixed(2);
+              const change = parseFloat(data.priceChangePercent).toFixed(2);
+              const farbe = change > 0 ? "green" : "red";
+
+              const div = document.createElement("div");
+              div.className = "coin-box";
+              div.innerHTML = `
+                <strong>${symbol}</strong><br>
+                Kurs: ${preis} USD<br>
+                Veränderung: <span style="color:${farbe}">${change}%</span>
+              `;
+              container.appendChild(div);
+            })
+            .catch(err => {
+              container.innerHTML += `<div class="coin-box">Fehler bei ${symbol}</div>`;
+            });
+        });
+      })
+      .catch(() => {
+        document.getElementById("coin-container").innerHTML = "Fehler beim Laden der Watchlist.";
+      });
   </script>
 </body>
 </html>
