@@ -1,13 +1,113 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Coin-Analyse</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #updated {
+      text-align: center;
+      color: #888;
+      font-size: 0.85em;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+
+    th {
+      background-color: #222;
+    }
+
+    .box {
+      background: #1b1b1b;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .led-bar {
+      display: flex;
+      gap: 5px;
+      margin: 8px 0;
+    }
+
+    .led {
+      width: 16px;
+      height: 16px;
+      background: #333;
+      border-radius: 3px;
+      box-shadow: inset 0 0 3px #000;
+    }
+
+    .led.on.green {
+      background: #00ff88;
+      box-shadow: 0 0 6px #00ff88;
+    }
+
+    .led.on.gray {
+      background: #999;
+      box-shadow: 0 0 4px #999;
+    }
+
+    .price-bar {
+      height: 10px;
+      border-radius: 5px;
+      background: linear-gradient(to right, #ff4444, #444, #00ff88);
+      margin-top: 10px;
+      position: relative;
+    }
+
+    .price-pointer {
+      width: 8px;
+      height: 20px;
+      background: #fff;
+      position: absolute;
+      top: -5px;
+      border-radius: 2px;
+      box-shadow: 0 0 6px #fff;
+    }
+
+    .green { color: #00ff88; }
+    .red { color: #ff4444; }
+
+    .back-link {
+      color: #4fc3f7;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
+
   <h1>Analyse: <span id="symbol">...</span></h1>
-  <div id="updated">Letzte Aktualisierung: <span id="zeit"></span></div>
+  <div id="updated">Letzte Aktualisierung: ...</div>
 
   <table>
     <thead>
@@ -24,8 +124,28 @@
     <tbody id="daten"></tbody>
   </table>
 
-  <br />
-  <a href="index.html">← zurück zur Übersicht</a>
+  <div class="box">
+    <strong>CRV:</strong>
+    <div class="led-bar" id="crv-leds"></div>
+    <div id="crv-text"></div>
+  </div>
+
+  <div class="box">
+    <strong>RSI:</strong>
+    <div class="led-bar" id="rsi-leds"></div>
+    <div id="rsi-text"></div>
+  </div>
+
+  <div class="box">
+    <strong>Preisveränderung (24h):</strong>
+    <div id="change-text"></div>
+    <div class="price-bar"><div id="price-pointer" class="price-pointer"></div></div>
+  </div>
+
+  <div class="box" id="support-box"></div>
+
+  <br>
+  <a href="index.html" class="back-link">← zurück zur Übersicht</a>
 
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -33,36 +153,65 @@
     document.getElementById("symbol").textContent = symbol;
 
     async function ladeAnalyse() {
-      try {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-        const data = await res.json();
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+      const data = await res.json();
 
-        const kurs = parseFloat(data.lastPrice);
-        const change = parseFloat(data.priceChangePercent);
+      const kurs = parseFloat(data.lastPrice);
+      const change = parseFloat(data.priceChangePercent);
+      const einstieg = kurs * 0.995;
+      const tp1 = kurs * 1.015;
+      const tp2 = kurs * 1.03;
+      const stop = kurs * 0.99;
+      const empfehlung = change > 0 ? "Long" : "Short";
+      const farbe = change > 0 ? "green" : "red";
 
-        const einstieg = kurs * 0.995;
-        const tp1 = kurs * 1.015;
-        const tp2 = kurs * 1.03;
-        const stop = kurs * 0.99;
-        const empfehlung = change > 0 ? "Long" : "Short";
-        const farbe = change > 0 ? "green" : "red";
+      document.getElementById("daten").innerHTML = `
+        <tr>
+          <td>${symbol}</td>
+          <td>${kurs.toFixed(2)}</td>
+          <td>${einstieg.toFixed(2)}</td>
+          <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+          <td>${stop.toFixed(2)}</td>
+          <td>kurzfristig</td>
+          <td class="${farbe}"><strong>${empfehlung}</strong></td>
+        </tr>
+      `;
 
-        document.getElementById("daten").innerHTML = `
-          <tr>
-            <td>${symbol}</td>
-            <td>${kurs.toFixed(2)}</td>
-            <td>${einstieg.toFixed(2)}</td>
-            <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
-            <td>${stop.toFixed(2)}</td>
-            <td>kurzfristig</td>
-            <td class="${farbe}"><strong>${empfehlung}</strong></td>
-          </tr>
-        `;
-
-        document.getElementById("zeit").textContent = new Date().toLocaleTimeString();
-      } catch (err) {
-        document.getElementById("daten").innerHTML = `<tr><td colspan="7">Fehler beim Laden der Analyse: ${err.message}</td></tr>`;
+      // CRV anzeigen
+      const crv = 4; // Platzhalter
+      const crvLeds = document.getElementById("crv-leds");
+      crvLeds.innerHTML = "";
+      for (let i = 0; i < 4; i++) {
+        const led = document.createElement("div");
+        led.className = "led " + (i < crv ? "on green" : "");
+        crvLeds.appendChild(led);
       }
+      document.getElementById("crv-text").textContent = "CRV: 4.00 — Sehr gutes Verhältnis – Profi-Setup";
+
+      // RSI anzeigen
+      const rsi = 9; // Platzhalter
+      const rsiLeds = document.getElementById("rsi-leds");
+      rsiLeds.innerHTML = "";
+      for (let i = 0; i < 4; i++) {
+        const led = document.createElement("div");
+        led.className = "led " + (i === 0 ? "on gray" : "");
+        rsiLeds.appendChild(led);
+      }
+      document.getElementById("rsi-text").textContent = "RSI: 9 — überverkauft – mögliches Kaufsignal";
+
+      // Preisveränderung
+      document.getElementById("change-text").innerHTML = (change > 0 ? "+" : "") + change.toFixed(2) + " % in 24h";
+      const pointer = document.getElementById("price-pointer");
+      const pos = Math.max(0, Math.min(100, 50 + change)); // -50% bis +50% → 0–100%
+      pointer.style.left = pos + "%";
+
+      // Unterstützung / Widerstand
+      document.getElementById("support-box").innerHTML = `
+        <strong>Unterstützung:</strong> ${stop.toFixed(2)} USDT<br>
+        <strong>Widerstand:</strong> ${tp1.toFixed(2)} USDT
+      `;
+
+      document.getElementById("updated").textContent = "Letzte Aktualisierung: " + new Date().toLocaleTimeString();
     }
 
     ladeAnalyse();
