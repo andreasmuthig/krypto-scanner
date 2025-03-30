@@ -6,15 +6,15 @@
   <link rel="stylesheet" href="style.css">
   <style>
     body {
+      margin: 0;
       background: #111;
       color: #eee;
-      font-family: Arial;
-      padding: 20px;
+      font-family: Arial, sans-serif;
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 10px;
+      margin-top: 20px;
     }
 
     #updated {
@@ -22,6 +22,10 @@
       color: #888;
       font-size: 0.85em;
       margin-bottom: 20px;
+    }
+
+    .table-wrapper {
+      padding: 0 20px;
     }
 
     table {
@@ -34,16 +38,37 @@
       padding: 10px;
       border-bottom: 1px solid #333;
       text-align: center;
+      font-size: 0.9em;
     }
 
     th {
       background-color: #222;
     }
 
+    .container {
+      display: flex;
+      flex-direction: row;
+      min-height: 100vh;
+    }
+
+    .left {
+      width: 30%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .right {
+      width: 70%;
+      padding: 20px;
+      box-sizing: border-box;
+      background: #181818;
+      border-left: 1px solid #222;
+    }
+
     .box {
-      background: #1b1b1b;
+      background: #2a2f2a;
       padding: 15px;
-      border-radius: 10px;
+      border-radius: 8px;
       margin-bottom: 15px;
       box-shadow: 0 0 10px #000;
     }
@@ -102,6 +127,15 @@
     .back-link:hover {
       text-decoration: underline;
     }
+
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+      }
+      .left, .right {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -109,43 +143,53 @@
   <h1>Analyse: <span id="symbol">...</span></h1>
   <div id="updated">Letzte Aktualisierung: ...</div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Asset</th>
-        <th>Kurs</th>
-        <th>Einstieg</th>
-        <th>Take-Profit</th>
-        <th>Stop-Loss</th>
-        <th>Haltezeit</th>
-        <th>Empfehlung</th>
-      </tr>
-    </thead>
-    <tbody id="daten"></tbody>
-  </table>
-
-  <div class="box">
-    <strong>CRV:</strong>
-    <div class="led-bar" id="crv-leds"></div>
-    <div id="crv-text"></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Kurs</th>
+          <th>Einstieg</th>
+          <th>Take-Profit</th>
+          <th>Stop-Loss</th>
+          <th>Haltezeit</th>
+          <th>Empfehlung</th>
+        </tr>
+      </thead>
+      <tbody id="daten"></tbody>
+    </table>
   </div>
 
-  <div class="box">
-    <strong>RSI:</strong>
-    <div class="led-bar" id="rsi-leds"></div>
-    <div id="rsi-text"></div>
+  <div class="container" style="display: flex; align-items: stretch; margin-top: 10px;">
+    <div class="left" style="display: flex; flex-direction: column;">
+      <div class="box">
+        <strong>CRV:</strong>
+        <div class="led-bar" id="crv-leds"></div>
+        <div id="crv-text"></div>
+      </div>
+
+      <div class="box">
+        <strong>RSI:</strong>
+        <div class="led-bar" id="rsi-leds"></div>
+        <div id="rsi-text"></div>
+      </div>
+
+      <div class="box">
+        <strong>Preisveränderung (24h):</strong>
+        <div id="change-text"></div>
+        <div class="price-bar"><div id="price-pointer" class="price-pointer"></div></div>
+      </div>
+
+      <div class="box" id="support-box"></div>
+
+      <br>
+      <a href="index.html" class="back-link">← zurück zur Übersicht</a>
+    </div>
+
+    <div class="right" style="border-radius: 8px; margin-right: 20px; background-color: #2a2f2a; display: flex; flex-direction: column; justify-content: flex-start;">
+      <!-- Platz für spätere Inhalte -->
+    </div>
   </div>
-
-  <div class="box">
-    <strong>Preisveränderung (24h):</strong>
-    <div id="change-text"></div>
-    <div class="price-bar"><div id="price-pointer" class="price-pointer"></div></div>
-  </div>
-
-  <div class="box" id="support-box"></div>
-
-  <br>
-  <a href="index.html" class="back-link">← zurück zur Übersicht</a>
 
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -177,8 +221,7 @@
         </tr>
       `;
 
-      // CRV anzeigen
-      const crv = 4; // Platzhalter
+      const crv = 4;
       const crvLeds = document.getElementById("crv-leds");
       crvLeds.innerHTML = "";
       for (let i = 0; i < 4; i++) {
@@ -188,8 +231,7 @@
       }
       document.getElementById("crv-text").textContent = "CRV: 4.00 — Sehr gutes Verhältnis – Profi-Setup";
 
-      // RSI anzeigen
-      const rsi = 9; // Platzhalter
+      const rsi = 9;
       const rsiLeds = document.getElementById("rsi-leds");
       rsiLeds.innerHTML = "";
       for (let i = 0; i < 4; i++) {
@@ -199,13 +241,11 @@
       }
       document.getElementById("rsi-text").textContent = "RSI: 9 — überverkauft – mögliches Kaufsignal";
 
-      // Preisveränderung
       document.getElementById("change-text").innerHTML = (change > 0 ? "+" : "") + change.toFixed(2) + " % in 24h";
       const pointer = document.getElementById("price-pointer");
-      const pos = Math.max(0, Math.min(100, 50 + change)); // -50% bis +50% → 0–100%
+      const pos = Math.max(0, Math.min(100, 50 + change));
       pointer.style.left = pos + "%";
 
-      // Unterstützung / Widerstand
       document.getElementById("support-box").innerHTML = `
         <strong>Unterstützung:</strong> ${stop.toFixed(2)} USDT<br>
         <strong>Widerstand:</strong> ${tp1.toFixed(2)} USDT
