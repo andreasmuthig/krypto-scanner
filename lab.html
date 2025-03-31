@@ -1,161 +1,129 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>LAB – Testbereich</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>LAB – BTC Analyse</title>
   <style>
     body {
-      background: #111;
+      margin: 0;
+      background-color: #111;
       color: #eee;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      text-align: center;
       padding: 20px;
     }
 
-    .warnbox {
-      background: #ff4444;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: bold;
-      margin-bottom: 20px;
-      box-shadow: 0 0 10px #ff0000;
+    .container {
+      display: flex;
+      padding: 20px;
+      gap: 20px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-
-    th, td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #333;
-    }
-
-    th {
-      background-color: #222;
-      color: #fff;
-    }
-
-    .box {
-      background: #1b1b1b;
-      padding: 15px;
+    .left, .right {
+      background: #2a2f2a;
+      padding: 20px;
       border-radius: 10px;
-      margin-bottom: 15px;
       box-shadow: 0 0 10px #000;
+      flex: 1;
     }
 
     .led-bar {
       display: flex;
-      gap: 4px;
-      margin: 8px 0;
+      gap: 6px;
+      margin-bottom: 10px;
     }
 
     .led {
-      width: 16px;
-      height: 16px;
-      background: #333;
-      border-radius: 3px;
-      box-shadow: inset 0 0 3px #000;
+      width: 20px;
+      height: 20px;
+      background: #444;
+      border-radius: 4px;
+      box-shadow: inset 0 0 4px #000;
     }
 
-    .led.on.green {
-      background: #00ff88;
-      box-shadow: 0 0 8px #00ff88;
+    .led.green { background: #00ff88; box-shadow: 0 0 6px #00ff88; }
+    .led.gray { background: #888; }
+
+    .section {
+      margin-bottom: 20px;
     }
 
-    .led.on.gray {
-      background: #888;
-      box-shadow: 0 0 5px #888;
-    }
-
-    .dot-red {
-      width: 10px;
-      height: 10px;
-      background: red;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 5px;
-      box-shadow: 0 0 6px red;
-    }
-
-    .back-link {
-      color: #4fc3f7;
+    .label {
       font-weight: bold;
-      text-decoration: none;
+      margin-bottom: 5px;
     }
 
-    .back-link:hover {
-      text-decoration: underline;
+    .bar {
+      width: 100%;
+      height: 14px;
+      background: #222;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(to right, #ff4444, #888, #00ff88);
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: #1a1a1a;
+      padding: 15px;
+      border-radius: 8px;
+      color: #ccf;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
+  <h1>LAB: BTCUSDT Analyse</h1>
 
-  <div class="warnbox">
-    BTCUSDT nähert sich dem Einstiegskurs!<br>
-    Aktueller Kurs: 83384.81 | Einstieg: 82967.89
-  </div>
+  <div class="container">
+    <div class="left">
+      <div class="section">
+        <div class="label">CRV:</div>
+        <div class="led-bar" id="crv-leds"></div>
+        <div id="crv-info">CRV wird geladen…</div>
+      </div>
 
-  <div id="updated" style="font-size: 0.85em; color: #888; margin-bottom: 10px;">
-    Letzte Aktualisierung: 10:56:59
-  </div>
+      <div class="section">
+        <div class="label">RSI:</div>
+        <div class="led-bar" id="rsi-leds"></div>
+        <div id="rsi-info">RSI wird geladen…</div>
+      </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Asset</th><th>Kurs</th><th>Einstieg</th><th>Take-Profit</th>
-        <th>Stop-Loss</th><th>Haltezeit</th><th>Empfehlung</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>BTCUSDT</td>
-        <td>83384.81</td>
-        <td>82967.89</td>
-        <td>84635.58 / 85886.35</td>
-        <td>82550.96</td>
-        <td>kurzfristig</td>
-        <td style="color: #00ff88;"><strong>Long</strong></td>
-      </tr>
-    </tbody>
-  </table>
+      <div class="section">
+        <div class="label">Preisveränderung (24h):</div>
+        <div class="bar"><div id="price-bar" class="bar-fill" style="width: 0%;"></div></div>
+        <div id="price-info">Wird geladen…</div>
+      </div>
 
-  <div class="box">
-    <strong>CRV:</strong>
-    <div class="led-bar">
-      <div class="led on green"></div>
-      <div class="led on green"></div>
-      <div class="led on green"></div>
-      <div class="led on green"></div>
+      <div class="section">
+        <div class="label">MA20 / MA50 (Thermometer):</div>
+        <div class="bar"><div id="ma-bar" class="bar-fill" style="width: 0%;"></div></div>
+        <div id="ma-info">Wird geladen…</div>
+      </div>
     </div>
-    CRV: 4.00 — Sehr gutes Verhältnis – Profi-Setup
-  </div>
 
-  <div class="box">
-    <strong>RSI:</strong>
-    <div class="led-bar">
-      <div class="led on gray"></div>
-      <div class="led"></div>
-      <div class="led"></div>
-      <div class="led"></div>
+    <div class="right">
+      <div class="label">Kerzenformationen</div>
+      <pre>
+### Prompt für Kerzenformations-Analyse
+**Aufgabe:**  
+Erkenne und beschreibe die folgenden **Kerzenformationen** in einem gegebenen Chart (z. B. Bitcoin 1-Tages-Chart) in Textform. Gib für jede Formation:  
+1. **Name** (engl./deutsch) + **Bildliche Darstellung** (ASCII- oder Text-Symbol).  
+2. **Bedeutung** (bullisch/bärisch/neutral).  
+3. **Bestätigung** (z. B. Volumen, RSI).  
+
+**Beispiele abdecken:**  
+- Einzelkerzen: Doji, Hammer, Hanging Man  
+- Mehrfachformationen: Engulfing, Harami, Morning Star, Three Black Crows
+      </pre>
     </div>
-    RSI: 9 — überverkauft – mögliches Kaufsignal
   </div>
-
-  <div class="box">
-    <strong>Preisveränderung (24h):</strong><br>
-    <span class="dot-red"></span> -0.66 % in 24h
-  </div>
-
-  <div class="box">
-    <strong>Unterstützung:</strong> 82550.96 USDT<br>
-    <strong>Widerstand:</strong> 84635.58 USDT
-  </div>
-
-  <br>
-  <a href="index.html" class="back-link">← zurück zur Übersicht</a>
 </body>
 </html>
