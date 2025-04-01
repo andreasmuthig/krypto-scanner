@@ -46,12 +46,6 @@
     .alt-row-2 {
       background-color: #2a2f2c;
     }
-
-    .led {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
-    }
   </style>
 </head>
 <body>
@@ -71,7 +65,7 @@
   </table>
 
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
 
     async function fetchCoinData(symbol) {
       const [tickerRes, klineRes] = await Promise.all([
@@ -100,7 +94,7 @@
 
     function getLEDS(colorCount, total = 4, activeColor = "#00ff88", inactiveColor = "#444") {
       return Array.from({ length: total }, (_, i) =>
-        `<div class="led" style="background:${i < colorCount ? activeColor : inactiveColor}"></div>`
+        `<div style="width: 16px; height: 16px; background: ${i < colorCount ? activeColor : inactiveColor}; border-radius: 4px;"></div>`
       ).join('');
     }
 
@@ -131,30 +125,28 @@
         const crv = calculateCRV(tp1 - einstieg, einstieg - stop);
         const rsi = calculateRSI();
         const support = (kurs * 0.97).toFixed(2);
-        const resistance = (kurs * 1.02).toFixed(2);
+        const resistance = (kurs * 1.03).toFixed(2);
 
         const ledColors = getLEDS(Math.min(4, Math.floor(crv)));
-        const rsiColor = getLEDS(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1);
+        const rsiColor = getLEDS(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1, 4, "#00ff88", "#444");
 
         const rowContent = `
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; justify-content: flex-start; gap: 30px; flex-wrap: wrap; align-items: center;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span>CRV: ${crv}</span>
-                <div style="display: flex; gap: 4px;">${ledColors}</div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span>RSI: ${rsi}</span>
-                <div style="display: flex; gap: 4px;">${rsiColor}</div>
-              </div>
-              <div>
-                <span>1h Veränderung: ${change1h.toFixed(2)}%</span><br />
-                <span>24h Veränderung: ${change.toFixed(2)}%</span>
-              </div>
+          <div style="display: flex; justify-content: flex-start; align-items: flex-start; gap: 40px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>CRV: ${crv}</span>
+              <div style="display: flex; gap: 4px;">${ledColors}</div>
             </div>
-            <div style="display: flex; gap: 40px; margin-left: 10px;">
-              <div class="green">🔽 Unterstützung: ${support} USDT</div>
-              <div class="red">🔼 Widerstand: ${resistance} USDT</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>RSI: ${rsi}</span>
+              <div style="display: flex; gap: 4px;">${rsiColor}</div>
+            </div>
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+              <div><span>1h Veränderung: ${change1h.toFixed(2)}%</span></div>
+              <div><span>24h Veränderung: ${change.toFixed(2)}%</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 20px;">
+              <div style="color: #00ff88;"><strong>🟢 Unterstützung:</strong> ${support} USDT</div>
+              <div style="color: #ff4444;"><strong>🔴 Widerstand:</strong> ${resistance} USDT</div>
             </div>
           </div>`;
 
