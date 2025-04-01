@@ -10,39 +10,31 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
     }
-
     th, td {
       padding: 12px;
       border-bottom: 1px solid #444;
       text-align: center;
     }
-
     th {
       background-color: #222;
     }
-
     a {
       color: #4fc3f7;
       text-decoration: none;
     }
-
     a:hover {
       text-decoration: underline;
     }
-
     .green { color: #00ff88; }
     .red { color: #ff4444; }
-
     .alt-row-1 {
       background-color: #1e1e1e;
     }
-
     .alt-row-2 {
       background-color: #2a2f2c;
     }
@@ -65,8 +57,7 @@
   </table>
 
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
-
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
     async function fetchCoinData(symbol) {
       const [tickerRes, klineRes] = await Promise.all([
         fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`),
@@ -83,25 +74,20 @@
         change1h: change1h
       };
     }
-
     function calculateRSI() {
       return Math.floor(Math.random() * 80) + 10;
     }
-
     function calculateCRV(change, stopLossPct) {
       return (change / stopLossPct).toFixed(2);
     }
-
-    function getLEDS(colorCount, total = 4, activeColor = "#00ff88", inactiveColor = "#444") {
+    function getLEDS(count, total = 4, active = "#00ff88", inactive = "#444") {
       return Array.from({ length: total }, (_, i) =>
-        `<div style="width: 16px; height: 16px; background: ${i < colorCount ? activeColor : inactiveColor}; border-radius: 4px;"></div>`
+        `<div style="width: 16px; height: 16px; background: ${i < count ? active : inactive}; border-radius: 4px;"></div>`
       ).join('');
     }
-
     async function buildTable() {
       const tbody = document.getElementById("coin-list");
       let index = 0;
-
       for (let symbol of watchlist) {
         const { kurs, change, change1h } = await fetchCoinData(symbol);
         const einstieg = kurs * 0.995;
@@ -110,7 +96,6 @@
         const stop = kurs * 0.99;
         const empfehlung = change > 0 ? "Long" : "Short";
         const farbe = change > 0 ? "green" : "red";
-
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
@@ -124,29 +109,29 @@
 
         const crv = calculateCRV(tp1 - einstieg, einstieg - stop);
         const rsi = calculateRSI();
-        const support = (kurs * 0.97).toFixed(2);
-        const resistance = (kurs * 1.03).toFixed(2);
+        const ledCRV = getLEDS(Math.min(4, Math.floor(crv)));
+        const ledRSI = getLEDS(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1);
 
-        const ledColors = getLEDS(Math.min(4, Math.floor(crv)));
-        const rsiColor = getLEDS(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1, 4, "#00ff88", "#444");
+        const support = (kurs * 0.97).toFixed(2);
+        const resistance = (kurs * 1.02).toFixed(2);
 
         const rowContent = `
-          <div style="display: flex; justify-content: flex-start; align-items: flex-start; gap: 40px; flex-wrap: wrap;">
+          <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <span>CRV: ${crv}</span>
-              <div style="display: flex; gap: 4px;">${ledColors}</div>
+              <div style="display: flex; gap: 4px;">${ledCRV}</div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
               <span>RSI: ${rsi}</span>
-              <div style="display: flex; gap: 4px;">${rsiColor}</div>
+              <div style="display: flex; gap: 4px;">${ledRSI}</div>
             </div>
-            <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
-              <div><span>1h Veränderung: ${change1h.toFixed(2)}%</span></div>
-              <div><span>24h Veränderung: ${change.toFixed(2)}%</span></div>
+            <div>
+              <div>1h Veränderung: ${change1h.toFixed(2)}%</div>
+              <div>24h Veränderung: ${change.toFixed(2)}%</div>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 20px;">
-              <div style="color: #00ff88;"><strong>🟢 Unterstützung:</strong> ${support} USDT</div>
-              <div style="color: #ff4444;"><strong>🔴 Widerstand:</strong> ${resistance} USDT</div>
+            <div style="display: flex; flex-direction: column; align-items: flex-start;">
+              <div style="color: #00ff88;">🔻 Unterstützung: ${support} USDT</div>
+              <div style="color: #ff4444;">🔺 Widerstand: ${resistance} USDT</div>
             </div>
           </div>`;
 
@@ -157,11 +142,9 @@
         td.innerHTML = rowContent;
         extraRow.appendChild(td);
         tbody.appendChild(extraRow);
-
         index++;
       }
     }
-
     buildTable();
   </script>
 </body>
