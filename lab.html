@@ -2,152 +2,328 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Coin Analyse mit LEDs</title>
+  <title>Krypto-Scanner Übersicht</title>
   <style>
     body {
-      background: #111;
+      background-color: #111;
       color: #eee;
       font-family: Arial, sans-serif;
-      margin: 0;
       padding: 20px;
     }
-    .container {
-      display: flex;
-      gap: 20px;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
-    .left {
-      flex: 0 0 30%;
-      background: #2f3530;
-      border-radius: 10px;
-      padding: 20px;
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #444;
+      text-align: center;
     }
-    .right {
-      flex: 0 0 70%;
-      background: #2f3530;
-      border-radius: 10px;
-      padding: 20px;
+
+    th {
+      background-color: #222;
     }
-    .indicator {
-      margin-bottom: 20px;
+
+    a {
+      color: #4fc3f7;
+      text-decoration: none;
     }
-    .label {
-      font-weight: bold;
-      margin-bottom: 5px;
+
+    a:hover {
+      text-decoration: underline;
     }
-    .led-row {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 6px;
+
+    .green { color: #00ff88; }
+    .red { color: #ff4444; }
+
+    .comment-row td {
+      text-align: left;
+      font-style: italic;
+      background-color: #1a1a1a;
+      padding: 10px 20px;
+      color: #ccc;
     }
-    .led {
-      width: 20px;
-      height: 20px;
-      background: #444;
-      border-radius: 4px;
+  
+    .row-blue td {
+      background-color: rgba(220, 220, 220, 0.08);
     }
-    .led.on {
-      background: #00c67a;
+    .row-green td {
+      background-color: rgba(31, 58, 44, 0.2);
     }
-    .score-text {
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    pre {
-      background: #1a1a1a;
-      padding: 15px;
-      border-radius: 8px;
-      color: #ccf;
-      white-space: pre-wrap;
-    }
-  </style>
+    </style>
+    
 </head>
 <body>
-  <h1>Analyse: BTCUSDT</h1>
-  <div class="container">
-    <div class="left">
-      <div class="indicator" id="ma-section">
-        <div class="label">MA 50 / MA 200</div>
-        <div class="led-row" id="ma-leds"></div>
-        <div class="score-text" id="ma-text">Lade MA-Daten…</div>
-      </div>
-      <div class="indicator" id="macd-section">
-        <div class="label">MACD</div>
-        <div class="led-row" id="macd-leds"></div>
-        <div class="score-text" id="macd-text">Simulierte MACD-Auswertung…</div>
-      </div>
-      <div class="indicator" id="rsi-section">
-        <div class="label">RSI</div>
-        <div class="led-row" id="rsi-leds"></div>
-        <div class="score-text" id="rsi-text">Lade RSI-Daten…</div>
-      </div>
-    </div>
-    <div class="right">
-      <h2>Beispieltext</h2>
-      <pre>
-Hier erscheint dynamisch generierter Text, basierend auf der Analyse von MA, MACD und RSI. Die LEDs auf der linken Seite zeigen die aktuelle Bewertung visuell an.
-      </pre>
-    </div>
-  </div>
+  <h1>Krypto-Scanner Übersicht</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th>Kurs</th>
+        <th>Einstieg</th>
+        <th>TP1 / TP2</th>
+        <th>Stop-Loss</th>
+        <th>Empfehlung</th>
+      </tr>
+    </thead>
+    <tbody id="coin-list"></tbody>
+  </table>
 
   <script>
-    async function ladeAnalyse() {
-      try {
-        const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200');
-        const data = await res.json();
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
 
-        const closePrices = data.map(d => parseFloat(d[4]));
-        const ma50 = closePrices.slice(-50).reduce((a, b) => a + b, 0) / 50;
-        const ma200 = closePrices.reduce((a, b) => a + b, 0) / 200;
+    async function fetchCoinData(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+      const data = await res.json();
+      return {
+        kurs: parseFloat(data.lastPrice),
+        change: parseFloat(data.priceChangePercent)
+      };
+    }
 
-        // MA Bewertung
-        const abstand = ((ma50 - ma200) / ma200) * 100;
-        const maScore = (ma50 > ma200 && abstand > 10) ? 4 : (Math.abs(ma50 - ma200) < 1 ? 1 : 0);
-        const maLeds = document.getElementById("ma-leds");
-        maLeds.innerHTML = "";
-        for (let i = 0; i < 4; i++) {
-          const led = document.createElement("div");
-          led.className = "led" + (i < maScore ? " on" : "");
-          maLeds.appendChild(led);
-        }
-        document.getElementById("ma-text").textContent = `MA50: ${ma50.toFixed(2)} | MA200: ${ma200.toFixed(2)} | Abstand: ${abstand.toFixed(1)}%`;
+    async function buildTable() {
+      const tbody = document.getElementById("coin-list");
 
-        // RSI (simuliert auf Basis der letzten 14 Kerzen)
-        const rsiSlice = closePrices.slice(-15);
+      for (let symbol of watchlist) {
+        const { kurs, change } = await fetchCoinData(symbol);
+
+        const einstieg = kurs * 0.995;
+        const tp1 = kurs * 1.015;
+        const tp2 = kurs * 1.03;
+        const stop = kurs * 0.99;
+        const empfehlung = change > 0 ? "Long" : "Short";
+        const farbe = change > 0 ? "green" : "red";
+
+        // Hauptzeile
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
+          <td>${kurs.toFixed(2)}</td>
+          <td>${einstieg.toFixed(2)}</td>
+          <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+          <td>${stop.toFixed(2)}</td>
+          <td class="${farbe}"><strong>${empfehlung}</strong></td>
+        `;
+        
+        const rowClass = watchlist.indexOf(symbol) % 2 === 0 ? "row-blue" : "row-green";
+        row.classList.add(rowClass);
+        tbody.appendChild(row);
+    
+
+        
+        // RSI berechnen (14 Tage)
+        const klineRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&limit=15`);
+        const klineData = await klineRes.json();
+        const closePrices = klineData.map(d => parseFloat(d[4]));
         let gains = 0, losses = 0;
-        for (let i = 1; i < rsiSlice.length; i++) {
-          const diff = rsiSlice[i] - rsiSlice[i - 1];
+        for (let i = 1; i < closePrices.length; i++) {
+          const diff = closePrices[i] - closePrices[i - 1];
           if (diff > 0) gains += diff;
           else losses -= diff;
         }
         const rs = gains / (losses || 1);
         const rsi = 100 - (100 / (1 + rs));
-        const rsiScore = rsi < 25 ? 3 : rsi > 75 ? 0 : 1;
-        const rsiLeds = document.getElementById("rsi-leds");
-        rsiLeds.innerHTML = "";
-        for (let i = 0; i < 3; i++) {
-          const led = document.createElement("div");
-          led.className = "led" + (i < rsiScore ? " on" : "");
-          rsiLeds.appendChild(led);
-        }
-        document.getElementById("rsi-text").textContent = `RSI: ${rsi.toFixed(2)} (${rsiScore} Punkte)`;
 
-        // MACD (simuliert)
-        const macdScore = (Math.random() > 0.7 ? 3 : (Math.random() > 0.5 ? 1 : 0)); // Simulation
-        const macdLeds = document.getElementById("macd-leds");
-        macdLeds.innerHTML = "";
-        for (let i = 0; i < 3; i++) {
-          const led = document.createElement("div");
-          led.className = "led" + (i < macdScore ? " on" : "");
-          macdLeds.appendChild(led);
-        }
-        document.getElementById("macd-text").textContent = `MACD (simuliert): ${macdScore} Punkte`;
+        const rsiScore = rsi < 25 ? 3 : rsi > 70 ? 0 : 1;
+        const rsiColors = rsiScore === 3 ? ["#00ff88", "#00ff88", "#00ff88"] :
+                          rsiScore === 1 ? ["#cccc33", "#444", "#444"] :
+                                           ["#ff4444", "#444", "#444"];
+        let rsiHTML = `<div style="font-style: normal; margin-top: 4px;">RSI: ${rsi.toFixed(1)}
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        rsiHTML += `<div style="display: flex; gap: 6px; margin-bottom: 6px;">`;
+        rsiColors.forEach(color => {
+          rsiHTML += `<div style="width: 16px; height: 16px; background: ${color}; border-radius: 4px;">
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        });
+        rsiHTML += `
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+    
+        const commentRow = document.createElement("tr");
+        
+        commentRow.classList.add("comment-row", rowClass);
+    
+        
+        const crv = (tp1 - einstieg) / (einstieg - stop);
+        const ledColors = crv >= 2 ? ["#00ff88", "#00ff88", "#00ff88", "#00ff88"] :
+                          crv >= 1.5 ? ["#ffff66", "#ffff66", "#ffff66", "#444"] :
+                          crv >= 1.0 ? ["#ffaa00", "#ffaa00", "#444", "#444"] :
+                                       ["#ff4444", "#444", "#444", "#444"];
 
-      } catch (e) {
-        console.error("Fehler beim Laden der Analyse:", e);
+        let ledHTML = `<div style="display: flex; gap: 6px; margin-bottom: 6px;">`;
+        ledColors.forEach(color => {
+          ledHTML += `<div style="width: 16px; height: 16px; background: ${color}; border-radius: 4px;">
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        });
+        ledHTML += `
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        const commentText = `CRV: ${crv.toFixed(2)}` + ledHTML;
+    
+        
+        
+      const srRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=20`);
+      const srData = await srRes.json();
+      const lows = srData.map(k => parseFloat(k[3]));
+      const highs = srData.map(k => parseFloat(k[2]));
+      const support = Math.min(...lows);
+      const resistance = Math.max(...highs);
+
+      const rowContent = `
+    
+          <div style="display: flex; justify-content: flex-start; align-items: center; gap: 40px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>CRV: ${crv.toFixed(2)}</span>
+              <div style="display: flex; gap: 4px;">${ledColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>RSI: ${rsi.toFixed(1)}</span>
+              <div style="display: flex; gap: 4px;">${rsiColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+            </div>
+          
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        
+        const price1hRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`);
+        const price1hData = await price1hRes.json();
+        const close1 = parseFloat(price1hData[0][4]);
+        const close2 = parseFloat(price1hData[1][4]);
+        const change1h = ((close2 - close1) / close1) * 100;
+
+        const changeClass1h = change1h >= 0 ? 'style="color:#00ff88;"' : 'style="color:#ff4444;"';
+        const changeClass24h = change >= 0 ? 'style="color:#00ff88;"' : 'style="color:#ff4444;"';
+
+        
+      const srRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=20`);
+      const srData = await srRes.json();
+      const lows = srData.map(k => parseFloat(k[3]));
+      const highs = srData.map(k => parseFloat(k[2]));
+      const support = Math.min(...lows);
+      const resistance = Math.max(...highs);
+
+      const rowContent = `
+    
+          <div style="display: flex; justify-content: flex-start; align-items: flex-start; gap: 40px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>CRV: ${crv.toFixed(2)}</span>
+              <div style="display: flex; gap: 4px;">${ledColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>RSI: ${rsi.toFixed(1)}</span>
+              <div style="display: flex; gap: 4px;">${rsiColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+            </div>
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+              <div><span ${changeClass1h}>1h Veränderung: ${change1h.toFixed(2)}%</span></div>
+              <div><span ${changeClass24h}>24h Veränderung: ${change.toFixed(2)}%</span></div>
+            </div>
+          
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+        commentRow.innerHTML = `<td colspan="6">${rowContent}</td>`;
+    
+    
+        
+      // Unterstützung & Widerstand holen
+      const srRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=20`);
+      const srData = await srRes.json();
+      const lows = srData.map(k => parseFloat(k[3]));
+      const highs = srData.map(k => parseFloat(k[2]));
+      const support = Math.min(...lows);
+      const resistance = Math.max(...highs);
+
+      // Inhalt der Kommentarzeile
+      
+      const srRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=20`);
+      const srData = await srRes.json();
+      const lows = srData.map(k => parseFloat(k[3]));
+      const highs = srData.map(k => parseFloat(k[2]));
+      const support = Math.min(...lows);
+      const resistance = Math.max(...highs);
+
+      const rowContent = `
+    
+        <div style="display: flex; justify-content: flex-start; align-items: flex-start; gap: 40px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span>CRV: ${crv.toFixed(2)}</span>
+            <div style="display: flex; gap: 4px;">${ledColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span>RSI: ${rsi.toFixed(1)}</span>
+            <div style="display: flex; gap: 4px;">${rsiColors.map(c => `<div style="width: 16px; height: 16px; background: ${c}; border-radius: 4px;"></div>`).join('')}</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="color:${change1h >= 0 ? '#00ff88' : '#ff4444'};">1h Veränderung: ${change1h.toFixed(2)}%</div>
+            <div style="color:${change >= 0 ? '#00ff88' : '#ff4444'};">24h Veränderung: ${change.toFixed(2)}%</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 10px;">
+            <div style="color:#00ff88;">Unterstützung: ${support.toFixed(2)} USDT</div>
+            <div style="color:#ff4444;">Widerstand: ${resistance.toFixed(2)} USDT</div>
+          </div>
+        
+      </div>
+      <div style="margin-top: 8px;">
+        <span style="color:#00ff88;">🟢 Unterstützung: ${support.toFixed(2)} USDT</span>
+        &nbsp;&nbsp;
+        <span style="color:#ff4444;">🔴 Widerstand: ${resistance.toFixed(2)} USDT</span>
+      </div>
+    </div>`;
+    
+
+      commentRow.innerHTML = `<td colspan="6">${rowContent}</td>`;
+      tbody.appendChild(commentRow);
+    
       }
     }
 
-    ladeAnalyse();
+    buildTable();
   </script>
 </body>
 </html>
