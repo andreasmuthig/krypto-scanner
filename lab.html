@@ -32,12 +32,9 @@
     }
     .green { color: #00ff88; }
     .red { color: #ff4444; }
-    .alt-row-1 {
-      background-color: #1e1e1e;
-    }
-    .alt-row-2 {
-      background-color: #2a2f2c;
-    }
+    .gray { color: #ccc; }
+    .alt-row-1 { background-color: #1e1e1e; }
+    .alt-row-2 { background-color: #2a2f2c; }
   </style>
 </head>
 <body>
@@ -48,7 +45,7 @@
         <th>Asset</th>
         <th>Kurs</th>
         <th>Einstieg</th>
-        <th>TP1 / TP2</th>
+        <th>TP1</th>
         <th>Stop-Loss</th>
         <th>Empfehlung</th>
       </tr>
@@ -57,7 +54,7 @@
   </table>
 
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];
     async function fetchCoinData(symbol) {
       const [tickerRes, klineRes] = await Promise.all([
         fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`),
@@ -77,8 +74,10 @@
     function calculateRSI() {
       return Math.floor(Math.random() * 80) + 10;
     }
-    function calculateCRV(change, stopLossPct) {
-      return (change / stopLossPct).toFixed(2);
+    function calculateCRV(tp1, einstieg, stop) {
+      const reward = tp1 - einstieg;
+      const risk = einstieg - stop;
+      return (reward / risk).toFixed(2);
     }
     function getLEDS(count, total = 4, active = "#00ff88", inactive = "#444") {
       return Array.from({ length: total }, (_, i) =>
@@ -92,29 +91,37 @@
         const { kurs, change, change1h } = await fetchCoinData(symbol);
         const einstieg = kurs * 0.995;
         const tp1 = kurs * 1.015;
-        const tp2 = kurs * 1.03;
         const stop = kurs * 0.99;
-        const empfehlung = change > 0 ? "Long" : "Short";
-        const farbe = change > 0 ? "green" : "red";
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
+
+        const crv = parseFloat(calculateCRV(tp1, einstieg, stop));
+        const rsi = calculateRSI();
+
+        let empfehlung = "Beobachten";
+        let klasse = "gray";
+        if (crv >= 2.0 && rsi < 60) {
+          empfehlung = "Long";
+          klasse = "green";
+        } else if (crv < 1.5 || rsi > 70) {
+          empfehlung = "Short";
+          klasse = "red";
+        }
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><a href="#">${symbol}</a></td>
           <td>${kurs.toFixed(2)}</td>
           <td>${einstieg.toFixed(2)}</td>
-          <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+          <td>${tp1.toFixed(2)}</td>
           <td>${stop.toFixed(2)}</td>
-          <td class="${farbe}"><strong>${empfehlung}</strong></td>
+          <td class="${klasse}"><strong>${empfehlung}</strong></td>
         `;
-        tbody.appendChild(tr);
+        tbody.appendChild(row);
 
-        const crv = calculateCRV(tp1 - einstieg, einstieg - stop);
-        const rsi = calculateRSI();
         const ledCRV = getLEDS(Math.min(4, Math.floor(crv)));
         const ledRSI = getLEDS(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1);
 
         const support = (kurs * 0.97).toFixed(2);
         const resistance = (kurs * 1.02).toFixed(2);
-
         const rowContent = `
           <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -134,7 +141,6 @@
               <div style="color: #ff4444;">🔺 Widerstand: ${resistance} USDT</div>
             </div>
           </div>`;
-
         const extraRow = document.createElement("tr");
         extraRow.className = index % 2 === 0 ? "alt-row-1" : "alt-row-2";
         const td = document.createElement("td");
