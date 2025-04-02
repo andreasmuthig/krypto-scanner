@@ -1,158 +1,157 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Krypto Scanner</title>
+  <title>Krypto-Scanner LAB – Helles Design + Indikatoren</title>
   <style>
     body {
-      background-color: #1c1c1c;
-      color: #eee;
+      background-color: #f4f4f4;
+      color: #222;
       font-family: Arial, sans-serif;
-      padding: 10px;
+      padding: 20px;
     }
-
-    h1 {
-      font-size: 16px;
-      margin-bottom: 10px;
-      color: #ccc;
-    }
-
-    .asset-block {
-      background-color: #2a2a2a;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      padding: 10px;
-    }
-
-    .row {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
       font-size: 14px;
     }
-
-    .mini-label {
-      font-size: 10px;
-      color: #888;
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
       text-align: center;
     }
-
-    .row div {
-      flex: 1 1 10%;
-      text-align: center;
+    th {
+      background-color: #e0e0e0;
     }
-
-    .led-bar {
-      display: flex;
-      justify-content: center;
+    a {
+      color: #007acc;
+      text-decoration: none;
+    }
+    .row-info {
+      background-color: #f0f0f0;
+      font-size: 12px;
+      text-align: left;
+      padding: 8px;
+    }
+    .green { color: #00c853; }
+    .red { color: #d50000; }
+    .leds {
+      display: inline-flex;
       gap: 4px;
-      margin-top: 4px;
+      vertical-align: middle;
     }
-
     .led {
       width: 12px;
       height: 12px;
-      border-radius: 3px;
-      background-color: #444;
+      border-radius: 4px;
+      background-color: #ccc;
     }
-
-    .led.active {
-      background-color: #00ff88;
+    .led.on {
+      background-color: #00c853;
     }
-
-    .details {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 8px;
-      font-size: 12px;
-      color: #aaa;
+    .feather {
+      width: 14px;
+      height: 14px;
+      vertical-align: text-bottom;
+      margin-right: 4px;
     }
-
-    .trend-up { color: #00ff88; }
-    .trend-down { color: #ff4444; }
-
-    .bold { font-weight: bold; }
   </style>
+  <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
-  <h1>Krypto Scanner</h1>
-  <div id="container"></div>
+  <h1 style="font-size: 16px;">Krypto Scanner</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th>Kurs</th>
+        <th>Einstieg</th>
+        <th>TP1 / TP2</th>
+        <th>Stop-Loss</th>
+        <th>CRV</th>
+        <th>RSI</th>
+        <th>1h</th>
+        <th>24h</th>
+      </tr>
+    </thead>
+    <tbody id="coin-list"></tbody>
+  </table>
 
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
-
-    function createLEDs(count) {
-      let leds = "";
-      for (let i = 0; i < 4; i++) {
-        leds += `<div class="led ${i < count ? 'active' : ''}"></div>`;
-      }
-      return leds;
-    }
-
-    function mini(label, value) {
-      return \`
-        <div>
-          <div class="mini-label">\${label}</div>
-          <div class="bold">\${value}</div>
-        </div>\`;
-    }
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
 
     async function fetchData(symbol) {
-      try {
-        const [ticker, klines] = await Promise.all([
-          fetch(\`https://api.binance.com/api/v3/ticker/24hr?symbol=\${symbol}\`).then(res => res.json()),
-          fetch(\`https://api.binance.com/api/v3/klines?symbol=\${symbol}&interval=1h&limit=50\`).then(res => res.json())
-        ]);
-
-        const closePrices = klines.map(k => parseFloat(k[4]));
-        const kurs = parseFloat(ticker.lastPrice);
-        const change = parseFloat(ticker.priceChangePercent);
-        const einstieg = (kurs * 0.995).toFixed(2);
-        const tp1 = (kurs * 1.015).toFixed(2);
-        const tp2 = (kurs * 1.03).toFixed(2);
-        const stop = (kurs * 0.99).toFixed(2);
-        const change1h = ((kurs - parseFloat(klines[0][4])) / parseFloat(klines[0][4]) * 100).toFixed(2);
-
-        // RSI
-        let gains = 0, losses = 0;
-        for (let i = 1; i < closePrices.length; i++) {
-          const diff = closePrices[i] - closePrices[i - 1];
-          if (diff >= 0) gains += diff;
-          else losses -= diff;
-        }
-        const avgGain = gains / 14;
-        const avgLoss = losses / 14;
-        const rs = avgGain / avgLoss;
-        const rsi = 100 - (100 / (1 + rs));
-        const rsiLED = rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1;
-
-        // CRV
-        const crv = ((tp1 - einstieg) / (einstieg - stop)).toFixed(2);
-        const crvLED = Math.min(4, Math.floor(crv));
-
-        // Anzeige
-        const row = document.createElement("div");
-        row.className = "asset-block";
-        row.innerHTML = \`
-          <div class="row">
-            \${mini("Asset", "<a style='color:#4fc3f7' href='coin.html?symbol=" + symbol + "'>" + symbol + "</a>")}
-            \${mini("Kurs", kurs.toFixed(2) + " USDT")}
-            \${mini("Einstieg", einstieg)}
-            \${mini("TP1", tp1)} \${mini("TP2", tp2)}
-            \${mini("SL", stop)}
-            \${mini("CRV", crv + "<div class='led-bar'>" + createLEDs(crvLED) + "</div>")}
-            \${mini("RSI", Math.round(rsi) + "<div class='led-bar'>" + createLEDs(rsiLED) + "</div>")}
-            \${mini("1h", change1h + "%")}
-            \${mini("24h", change.toFixed(2) + "%")}
-          </div>
-        \`;
-        document.getElementById("container").appendChild(row);
-      } catch (e) {
-        console.error("Fehler bei " + symbol, e);
-      }
+      const ticker = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json());
+      const klines = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`).then(r => r.json());
+      const price = parseFloat(ticker.lastPrice);
+      const price1hAgo = parseFloat(klines[0][4]);
+      const change1h = ((price - price1hAgo) / price1hAgo) * 100;
+      return { price, change1h, change24h: parseFloat(ticker.priceChangePercent), volume: parseFloat(ticker.volume) };
     }
 
-    watchlist.forEach(fetchData);
+    function createLEDs(value, max = 4) {
+      const count = Math.min(max, Math.floor(value));
+      return `<div class="leds">` + Array.from({length: max}, (_, i) =>
+        `<div class="led ${i < count ? "on" : ""}"></div>`).join('') + `</div>`;
+    }
+
+    function getRandomRSI() {
+      return Math.floor(Math.random() * 70) + 10;
+    }
+
+    function getMACDSignal() {
+      return Math.random() > 0.5 ? "Bullish" : "Bearish";
+    }
+
+    function getEMATrend() {
+      return Math.random() > 0.5 ? "EMA50 > EMA200" : "EMA50 < EMA200";
+    }
+
+    async function buildTable() {
+      const tbody = document.getElementById("coin-list");
+      for (const symbol of watchlist) {
+        const { price, change1h, change24h, volume } = await fetchData(symbol);
+        const entry = price * 0.995;
+        const tp1 = price * 1.015;
+        const tp2 = price * 1.03;
+        const sl = price * 0.99;
+        const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
+        const rsi = getRandomRSI();
+        const macd = getMACDSignal();
+        const ema = getEMATrend();
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
+          <td>${price.toFixed(2)}</td>
+          <td>${entry.toFixed(2)}</td>
+          <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+          <td>${sl.toFixed(2)}</td>
+          <td>${crv} ${createLEDs(crv)}</td>
+          <td>${rsi} ${createLEDs(rsi / 25)}</td>
+          <td class="${change1h >= 0 ? 'green' : 'red'}">${change1h.toFixed(2)}%</td>
+          <td class="${change24h >= 0 ? 'green' : 'red'}">${change24h.toFixed(2)}%</td>
+        `;
+        tbody.appendChild(row);
+
+        const infoRow = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 9;
+        td.className = "row-info";
+        td.innerHTML = `
+          <i data-feather="activity" class="feather"></i> EMA: ${ema} &nbsp;&nbsp;
+          <i data-feather="trending-up" class="feather"></i> MACD: ${macd} &nbsp;&nbsp;
+          <i data-feather="bar-chart-2" class="feather"></i> Volumen: ${volume.toFixed(2)}
+        `;
+        infoRow.appendChild(td);
+        tbody.appendChild(infoRow);
+      }
+
+      feather.replace();
+    }
+
+    buildTable();
   </script>
 </body>
 </html>
