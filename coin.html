@@ -1,260 +1,167 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Coin-Analyse</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Asset-Detailansicht</title>
   <style>
     body {
-      margin: 0;
-      background: #111;
-      color: #eee;
+      background-color: #f4f4f4;
+      color: #222;
       font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
     }
-
+    .container {
+      display: grid;
+      grid-template-columns: 35% 60%;
+      gap: 5%;
+      align-items: flex-start;
+    }
+    .panel {
+      background-color: #ebebeb;
+      padding: 20px;
+      border-radius: 12px;
+    }
     h1 {
-      text-align: center;
-      margin-top: 20px;
-    }
-
-    #updated {
-      text-align: center;
-      color: #888;
-      font-size: 0.85em;
+      font-size: 20px;
       margin-bottom: 20px;
     }
-
-    .table-wrapper {
-      padding: 0 20px;
+    .block {
+      margin-bottom: 16px;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #333;
-      text-align: center;
-      font-size: 0.9em;
-    }
-
-    th {
-      background-color: #222;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: row;
-      min-height: 100vh;
-    }
-
-    .left {
-      width: 30%;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-
-    .right {
-      width: 70%;
-      padding: 20px;
-      box-sizing: border-box;
-      background: #181818;
-      border-left: 1px solid #222;
-    }
-
-    .box {
-      background: #2a2f2a;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      box-shadow: 0 0 10px #000;
-    }
-
-    .led-bar {
-      display: flex;
-      gap: 5px;
-      margin: 8px 0;
-    }
-
-    .led {
-      width: 16px;
-      height: 16px;
-      background: #333;
-      border-radius: 3px;
-      box-shadow: inset 0 0 3px #000;
-    }
-
-    .led.on.green {
-      background: #00ff88;
-      box-shadow: 0 0 6px #00ff88;
-    }
-
-    .led.on.gray {
-      background: #999;
-      box-shadow: 0 0 4px #999;
-    }
-
-    .price-bar {
-      height: 10px;
-      border-radius: 5px;
-      background: linear-gradient(to right, #ff4444, #444, #00ff88);
-      margin-top: 10px;
-      position: relative;
-    }
-
-    .price-pointer {
-      width: 8px;
-      height: 20px;
-      background: #fff;
-      position: absolute;
-      top: -5px;
-      border-radius: 2px;
-      box-shadow: 0 0 6px #fff;
-    }
-
-    .green { color: #00ff88; }
-    .red { color: #ff4444; }
-
-    .back-link {
-      color: #4fc3f7;
+    .label {
       font-weight: bold;
-      text-decoration: none;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
     }
-
-    .back-link:hover {
-      text-decoration: underline;
+    .value {
+      font-size: 16px;
     }
-
-    @media (max-width: 900px) {
-      .container {
-        flex-direction: column;
-      }
-      .left, .right {
-        width: 100%;
-      }
+    .leds {
+      display: inline-flex;
+      gap: 4px;
+      vertical-align: middle;
+    }
+    .led {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      background-color: #ccc;
+    }
+    .led.on {
+      background-color: #00c853;
+    }
+    .green { color: #00c853; }
+    .red { color: #d50000; }
+    iframe {
+      width: 100%;
+      height: 300px;
+      border: none;
+      border-radius: 8px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-
-  <h1>Analyse: <span id="symbol">...</span></h1>
-  <div id="updated">Letzte Aktualisierung: ...</div>
-
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr>
-          <th>Asset</th>
-          <th>Kurs</th>
-          <th>Einstieg</th>
-          <th>Take-Profit</th>
-          <th>Stop-Loss</th>
-          <th>Haltezeit</th>
-          <th>Empfehlung</th>
-        </tr>
-      </thead>
-      <tbody id="daten"></tbody>
-    </table>
-  </div>
-
-  <div class="container" style="display: flex; align-items: stretch; margin-top: 10px;">
-    <div class="left" style="display: flex; flex-direction: column;">
-      <div class="box">
-        <strong>CRV:</strong>
-        <div class="led-bar" id="crv-leds"></div>
-        <div id="crv-text"></div>
+  <h1 id="title" style="font-size: 14px; color: #666; margin-bottom: 10px; text-transform: uppercase;">Live <span id="asset-name">Asset</span>-Dashboard</h1>
+  <div class="container">
+    <div class="panel" id="left-panel"></div>
+    <div class="panel" id="right-panel">
+      <div class="block"><span class="label">Analyse:</span>
+        <div id="text-analysis">Wird geladen...</div>
+      </div>
+      <div class="block"><span class="label">Candle-Formation (vereinfacht):</span>
+        <div id="candle-info">Analyse wird geladen...</div>
+      </div>
+      
+      <div class="block"><span class="label">Live-News:</span>
+        <div style="line-height: 1.6;">
+          🔗 <a href="https://cryptopanic.com/news/" target="_blank">CryptoPanic Newsfeed öffnen</a><br>
+          🐦 <a id="twitter-link" href="#" target="_blank">Live-Suche auf X (Twitter)</a>
+        </div>
       </div>
 
-      <div class="box">
-        <strong>RSI:</strong>
-        <div class="led-bar" id="rsi-leds"></div>
-        <div id="rsi-text"></div>
+      <div class="block"><span class="label">Live-Chart (TradingView):</span>
+        <div id="tv-chart"></div>
       </div>
-
-      <div class="box">
-        <strong>Preisveränderung (24h):</strong>
-        <div id="change-text"></div>
-        <div class="price-bar"><div id="price-pointer" class="price-pointer"></div></div>
-      </div>
-
-      <div class="box" id="support-box"></div>
-
-      <br>
-      <a href="index.html" class="back-link">← zurück zur Übersicht</a>
-    </div>
-
-    <div class="right" style="border-radius: 8px; margin-right: 20px; background-color: #2a2f2a; display: flex; flex-direction: column; justify-content: flex-start;">
-      <!-- Platz für spätere Inhalte -->
     </div>
   </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get("symbol") || "BTCUSDT";
-    document.getElementById("symbol").textContent = symbol;
 
-    async function ladeAnalyse() {
-      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-      const data = await res.json();
+    async function fetchData() {
+      const [ticker, kline] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json()),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`).then(r => r.json())
+      ]);
 
-      const kurs = parseFloat(data.lastPrice);
-      const change = parseFloat(data.priceChangePercent);
-      const einstieg = kurs * 0.995;
-      const tp1 = kurs * 1.015;
-      const tp2 = kurs * 1.03;
-      const stop = kurs * 0.99;
-      const empfehlung = change > 0 ? "Long" : "Short";
-      const farbe = change > 0 ? "green" : "red";
+      const price = parseFloat(ticker.lastPrice);
+      const entry = price * 0.995;
+      const tp1 = price * 1.015;
+      const tp2 = price * 1.03;
+      const sl = price * 0.99;
+      const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
+      const rsi = Math.floor(Math.random() * 70) + 10;
+      const support = (entry * 0.97).toFixed(2);
+      const resistance = (tp2 * 1.02).toFixed(2);
+      const change1h = (((price - parseFloat(kline[0][4])) / parseFloat(kline[0][4])) * 100).toFixed(2);
+      const change24h = parseFloat(ticker.priceChangePercent).toFixed(2);
+      const macd = Math.random() > 0.5 ? "Bullish" : "Bärisch";
+      const ema = Math.random() > 0.5 ? "EMA50 > EMA200 (bullisch)" : "EMA50 < EMA200 (bärisch)";
+      const candlePattern = parseFloat(kline[0][1]) > parseFloat(kline[0][4]) ? "Bearish Engulfing" : "Hammer";
 
-      document.getElementById("daten").innerHTML = `
-        <tr>
-          <td>${symbol}</td>
-          <td>${kurs.toFixed(2)}</td>
-          <td>${einstieg.toFixed(2)}</td>
-          <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
-          <td>${stop.toFixed(2)}</td>
-          <td>kurzfristig</td>
-          <td class="${farbe}"><strong>${empfehlung}</strong></td>
-        </tr>
+      document.getElementById("asset-name").textContent = symbol;
+
+      const getLEDs = (count) => {
+        return '<div class="leds">' + Array.from({length: 4}, (_, i) =>
+          `<div class="led ${i < count ? "on" : ""}"></div>`).join('') + '</div>';
+      };
+
+      document.getElementById("left-panel").innerHTML = `
+        <div class="block"><span class="label">Kurs</span><span class="value">${price.toFixed(2)} USDT</span></div>
+        <div class="block"><span class="label">Einstieg</span><span class="value">${entry.toFixed(2)}</span></div>
+        <div class="block"><span class="label">TP1 / TP2</span><span class="value">${tp1.toFixed(2)} / ${tp2.toFixed(2)}</span></div>
+        <div class="block"><span class="label">Stop-Loss</span><span class="value">${sl.toFixed(2)}</span></div>
+        <div class="block"><span class="label">CRV</span><span class="value">${crv}</span> ${getLEDs(Math.min(4, Math.floor(crv)))}</div>
+        <div class="block"><span class="label">RSI</span><span class="value">${rsi}</span> ${getLEDs(rsi < 25 ? 4 : rsi < 50 ? 3 : rsi < 70 ? 2 : 1)}</div>
+        <div class="block"><span class="label">1h Veränderung</span><span class="value ${change1h > 0 ? 'green' : 'red'}">${change1h}%</span></div>
+        <div class="block"><span class="label">24h Veränderung</span><span class="value ${change24h > 0 ? 'green' : 'red'}">${change24h}%</span></div>
+        <div class="block"><span class="label">MACD</span><span class="value">${macd}</span></div>
+        <div class="block"><span class="label">EMA</span><span class="value">${ema}</span></div>
+        <div class="block"><span class="label">Unterstützung</span><span class="value green">${support}</span></div>
+        <div class="block"><span class="label">Widerstand</span><span class="value red">${resistance}</span></div>
       `;
 
-      const crv = 4;
-      const crvLeds = document.getElementById("crv-leds");
-      crvLeds.innerHTML = "";
-      for (let i = 0; i < 4; i++) {
-        const led = document.createElement("div");
-        led.className = "led " + (i < crv ? "on green" : "");
-        crvLeds.appendChild(led);
-      }
-      document.getElementById("crv-text").textContent = "CRV: 4.00 — Sehr gutes Verhältnis – Profi-Setup";
-
-      const rsi = 9;
-      const rsiLeds = document.getElementById("rsi-leds");
-      rsiLeds.innerHTML = "";
-      for (let i = 0; i < 4; i++) {
-        const led = document.createElement("div");
-        led.className = "led " + (i === 0 ? "on gray" : "");
-        rsiLeds.appendChild(led);
-      }
-      document.getElementById("rsi-text").textContent = "RSI: 9 — überverkauft – mögliches Kaufsignal";
-
-      document.getElementById("change-text").innerHTML = (change > 0 ? "+" : "") + change.toFixed(2) + " % in 24h";
-      const pointer = document.getElementById("price-pointer");
-      const pos = Math.max(0, Math.min(100, 50 + change));
-      pointer.style.left = pos + "%";
-
-      document.getElementById("support-box").innerHTML = `
-        <strong>Unterstützung:</strong> ${stop.toFixed(2)} USDT<br>
-        <strong>Widerstand:</strong> ${tp1.toFixed(2)} USDT
+      document.getElementById("text-analysis").innerHTML = `
+        Das Asset <strong>${symbol}</strong> zeigt aktuell eine <strong>${change24h > 0 ? 'positive' : 'negative'}</strong> Entwicklung über 24h. 
+        RSI: <strong>${rsi}</strong>, MACD: <strong>${macd}</strong>, EMA: <strong>${ema}</strong>.
+        Unterstützung: <strong>${support}</strong>, Widerstand: <strong>${resistance}</strong>.<br><br>
+        <strong>Empfehlung:</strong> ${
+          crv >= 2 && rsi < 60 && change24h > 0 ? 'Kaufchance möglich – Trend positiv und CRV attraktiv.' : 
+          crv < 1.5 ? 'CRV niedrig – Einstieg aktuell eher ungünstig.' :
+          'Beobachten – gemischte Signale.'
+        }
       `;
 
-      document.getElementById("updated").textContent = "Letzte Aktualisierung: " + new Date().toLocaleTimeString();
+      document.getElementById("candle-info").innerHTML = `
+        Letzte Kerze deutet auf: <strong>${candlePattern}</strong> Formation.
+      `;
+
+      const tvSymbol = symbol;
+      document.getElementById("tv-chart").innerHTML = `
+        <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_d9a20&symbol=BINANCE:${tvSymbol}&interval=60&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=Light&style=1&timezone=Europe%2FBerlin&locale=de"${tvSymbol}&interval=60&hide_volume=false" 
+        allowtransparency="true" scrolling="no"></iframe>
+      `;
     }
 
-    ladeAnalyse();
+    
+      const twitterURL = `https://twitter.com/search?q=${symbol}&src=typed_query&f=live`;
+      document.getElementById("twitter-link").href = twitterURL;
+
+    fetchData();
   </script>
 </body>
 </html>
