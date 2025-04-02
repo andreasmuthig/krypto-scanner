@@ -64,7 +64,8 @@
   </style>
 </head>
 <body>
-  <h1 id="title" style="font-size: 14px; color: #666; margin-bottom: 10px; text-transform: uppercase;">Live <span id="asset-name">Asset</span>-Dashboard</h1>
+  
+  <div style="display: flex; justify-content: space-between; align-items: center;"><h1 id="title" style="font-size: 14px; color: #666; margin-bottom: 10px; text-transform: uppercase;">Live <span id="asset-name">Asset</span>-Dashboard</h1><a href="/krypto-scanner/index.html" style="font-size: 12px; color: #007acc; text-decoration: none;">🔙 Zurück zur Übersicht</a></div>
   <div class="container">
     <div class="panel" id="left-panel"></div>
     <div class="panel" id="right-panel">
@@ -161,7 +162,63 @@
       const twitterURL = `https://twitter.com/search?q=${symbol}&src=typed_query&f=live`;
       document.getElementById("twitter-link").href = twitterURL;
 
+    
+function analyseCandlestick(open, high, low, close, prevOpen, prevClose, prev2Open, prev2Close) {
+  const bodySize = Math.abs(close - open);
+  const upperWick = high - Math.max(open, close);
+  const lowerWick = Math.min(open, close) - low;
+
+  if (bodySize < (high - low) * 0.3) {
+    return "Doji";
+  }
+  if (lowerWick > bodySize * 2 && upperWick < bodySize) {
+    return "Hammer";
+  }
+  if (upperWick > bodySize * 2 && lowerWick < bodySize) {
+    return "Hanging Man";
+  }
+  if (open > close && bodySize > upperWick + lowerWick) {
+    return "Bearish Candle";
+  }
+  if (close > open && bodySize > upperWick + lowerWick) {
+    return "Bullish Candle";
+  }
+  return "Unklare Formation";
+}
+
+function fetchAndAnalyseCandlestick(symbol) {
+  fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`)
+    .then(r => r.json())
+    .then(data => {
+      const [open, high, low, close] = [1, 2, 3, 4].map(i => parseFloat(data[0][i]));
+      const analyse = analyseCandlestick(open, high, low, close);
+      document.getElementById("candle-result").textContent = `Letzte Kerze deutet auf: ${analyse}`;
+document.getElementById("candle-result").title = explainCandle(analyse);
+    });
+}
+
+    fetchAndAnalyseCandlestick(symbol);
     fetchData();
-  </script>
+  
+function explainCandle(pattern) {
+  const map = {
+    "Doji": "Unentschlossenheit – Eröffnung und Schluss fast gleich.",
+    "Hammer": "Bullisches Umkehrsignal nach Abwärtsbewegung.",
+    "Hanging Man": "Bärisches Warnsignal nach Aufwärtsbewegung.",
+    "Bearish Candle": "Negative Bewegung – Schlusskurs unter Eröffnung.",
+    "Bullish Candle": "Positive Bewegung – Schlusskurs über Eröffnung.",
+    "Bullish Engulfing": "Bullische Umkehr – große grüne Kerze verschlingt rote.",
+    "Bearish Engulfing": "Bärische Umkehr – große rote Kerze verschlingt grüne.",
+    "Harami": "Kleinere Kerze innerhalb der vorherigen – mögliches Umkehrsignal.",
+    "Morning Star": "Stark bullisches Umkehrsignal – 3 Kerzenmuster.",
+    "Evening Star": "Stark bärisches Umkehrsignal – 3 Kerzenmuster.",
+    "Three Black Crows": "Drei große rote Kerzen – starker Abwärtstrend.",
+    "Three White Soldiers": "Drei große grüne Kerzen – starker Aufwärtstrend.",
+    "Unklare Formation": "Keine eindeutige Formation erkannt."
+  };
+  return map[pattern] || "";
+}
+
+</script>
 </body>
 </html>
