@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Krypto-Scanner LAB – Helles Design + Indikatoren</title>
+  <title>Krypto-Scanner LAB – Unterstützungen & Widerstände</title>
   <style>
     body {
       background-color: #f4f4f4;
@@ -28,12 +28,6 @@
       color: #007acc;
       text-decoration: none;
     }
-    .row-info {
-      background-color: #f0f0f0;
-      font-size: 12px;
-      text-align: left;
-      padding: 8px;
-    }
     .green { color: #00c853; }
     .red { color: #d50000; }
     .leds {
@@ -55,6 +49,12 @@
       height: 14px;
       vertical-align: text-bottom;
       margin-right: 4px;
+    }
+    .row-gray {
+      background-color: #ebebeb;
+    }
+    .row-green {
+      background-color: #e2f5d5;
     }
   </style>
   <script src="https://unpkg.com/feather-icons"></script>
@@ -105,12 +105,14 @@
     }
 
     function getEMATrend() {
-      return Math.random() > 0.5 ? "EMA50 > EMA200" : "EMA50 < EMA200";
+      return Math.random() > 0.5 ? "EMA50 > EMA200 (bullisch)" : "EMA50 < EMA200 (bärisch)";
     }
 
     async function buildTable() {
       const tbody = document.getElementById("coin-list");
-      for (const symbol of watchlist) {
+
+      for (let i = 0; i < watchlist.length; i++) {
+        const symbol = watchlist[i];
         const { price, change1h, change24h, volume } = await fetchData(symbol);
         const entry = price * 0.995;
         const tp1 = price * 1.015;
@@ -120,8 +122,12 @@
         const rsi = getRandomRSI();
         const macd = getMACDSignal();
         const ema = getEMATrend();
+        const support = (entry * 0.97).toFixed(2);
+        const resistance = (tp2 * 1.02).toFixed(2);
+        const rowClass = i % 2 === 0 ? "row-gray" : "row-green";
 
         const row = document.createElement("tr");
+        row.className = rowClass;
         row.innerHTML = `
           <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
           <td>${price.toFixed(2)}</td>
@@ -136,13 +142,15 @@
         tbody.appendChild(row);
 
         const infoRow = document.createElement("tr");
+        infoRow.className = rowClass;
         const td = document.createElement("td");
         td.colSpan = 9;
-        td.className = "row-info";
         td.innerHTML = `
           <i data-feather="activity" class="feather"></i> EMA: ${ema} &nbsp;&nbsp;
           <i data-feather="trending-up" class="feather"></i> MACD: ${macd} &nbsp;&nbsp;
-          <i data-feather="bar-chart-2" class="feather"></i> Volumen: ${volume.toFixed(2)}
+          <i data-feather="bar-chart-2" class="feather"></i> Volumen: ${volume.toFixed(2)} &nbsp;&nbsp;
+          <span style="color: #00aa00;">🔻 Unterstützung: ${support} USDT</span> &nbsp;&nbsp;
+          <span style="color: #cc0000;">🔺 Widerstand: ${resistance} USDT</span>
         `;
         infoRow.appendChild(td);
         tbody.appendChild(infoRow);
