@@ -2,25 +2,67 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Krypto-Scanner LAB – Unterstützungen & Widerstände</title>
+  <title>Krypto-Scanner LAB</title>
   <link id="theme" rel="stylesheet" href="style-dark.css">
-  <link rel="stylesheet" href="alarm-ui.css">
   <script src="https://unpkg.com/feather-icons"></script>
   <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+    th {
+      background-color: #222;
+    }
+    .green { color: #00ff88; }
+    .red { color: #ff4444; }
+    .leds {
+      display: inline-flex;
+      gap: 4px;
+      vertical-align: middle;
+    }
+    .led {
+      width: 12px;
+      height: 12px;
+      border-radius: 4px;
+      background-color: #444;
+    }
+    .led.on {
+      background-color: #00ff88;
+    }
+    .toggle-switch {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+    }
     .alarm-control {
       position: absolute;
-      top: 60px;
+      top: 20px;
       right: 20px;
       display: flex;
-      align-items: center;
       gap: 12px;
+      align-items: center;
       color: #00ff88;
-      font-size: 12px;
+      font-size: 14px;
     }
-    .alarm-control span {
-      font-weight: bold;
-    }
-    .alarm-control i {
+    .feather {
+      width: 16px;
+      height: 16px;
       cursor: pointer;
     }
   </style>
@@ -28,19 +70,16 @@
 <body>
 
 <div class="toggle-switch">
-  🌙
-  <input type="checkbox" id="mode-toggle">
-  ☀️
+  🌙 <input type="checkbox" id="mode-toggle" checked> ☀️
 </div>
 
 <div class="alarm-control">
-  <i data-feather="bell" id="alarm-test"></i>
-  <i data-feather="bell-off" id="alarm-off"></i>
+  <i data-feather="bell" onclick="testAlarm()"></i>
+  <i data-feather="bell-off" onclick="disableAlarm()"></i>
   <span id="alarm-status">Alarm EIN</span>
 </div>
 
-<h1 style="font-size: 16px;">Krypto Scanner</h1>
-
+<h1>Krypto Scanner</h1>
 <table>
   <thead>
     <tr>
@@ -58,44 +97,75 @@
   <tbody id="coin-list"></tbody>
 </table>
 
-<audio id="alarm-sound" src="alarm.mp3" preload="auto"></audio>
+<audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
 <script>
-  const toggle = document.getElementById('mode-toggle');
-  toggle.checked = true;
-  toggle.addEventListener('change', () => {
-    document.getElementById('theme').setAttribute('href', toggle.checked ? 'style-dark.css' : 'style-light.css');
-  });
+const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
 
-  const alarmSound = document.getElementById('alarm-sound');
-  let alarmActive = true;
+async function fetchData(symbol) {
+  const ticker = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json());
+  const klines = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`).then(r => r.json());
+  const price = parseFloat(ticker.lastPrice);
+  const price1hAgo = parseFloat(klines[0][4]);
+  const change1h = ((price - price1hAgo) / price1hAgo) * 100;
+  return { price, change1h, change24h: parseFloat(ticker.priceChangePercent), volume: parseFloat(ticker.volume) };
+}
 
-  document.getElementById("alarm-test").addEventListener("click", () => {
-    if (!alarmActive) return;
-    alarmSound.play();
-    const box = document.createElement("div");
-    box.className = "alarm-box";
-    box.innerHTML = '<b>Testalarm:</b> BTC nähert sich Einstieg!';
-    const close = document.createElement("span");
-    close.className = "alarm-close";
-    close.innerHTML = "&times;";
-    close.onclick = () => box.remove();
-    box.appendChild(close);
-    document.body.appendChild(box);
-    setTimeout(() => box.remove(), 6000);
-  });
+function createLEDs(value, max = 4) {
+  const count = Math.min(max, Math.floor(value));
+  return '<div class="leds">' + Array.from({length: max}, (_, i) =>
+    `<div class="led ${i < count ? "on" : ""}"></div>`).join('') + '</div>';
+}
 
-  document.getElementById("alarm-off").addEventListener("click", () => {
-    alarmActive = !alarmActive;
-    const status = document.getElementById("alarm-status");
-    status.textContent = alarmActive ? "Alarm EIN" : "Alarm AUS";
-    status.style.color = alarmActive ? "#00ff88" : "#ff4444";
-  });
+function getRandomRSI() {
+  return Math.floor(Math.random() * 70) + 10;
+}
 
+async function buildTable() {
+  const tbody = document.getElementById("coin-list");
+  for (const symbol of watchlist) {
+    const { price, change1h, change24h, volume } = await fetchData(symbol);
+    const entry = price * 0.995;
+    const tp1 = price * 1.015;
+    const tp2 = price * 1.03;
+    const sl = price * 0.99;
+    const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
+    const rsi = getRandomRSI();
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><a href="coin.html?symbol=${symbol}">${symbol}</a></td>
+      <td>${price.toFixed(2)}</td>
+      <td>${entry.toFixed(2)}</td>
+      <td>${tp1.toFixed(2)} / ${tp2.toFixed(2)}</td>
+      <td>${sl.toFixed(2)}</td>
+      <td>${crv} ${createLEDs(crv)}</td>
+      <td>${rsi} ${createLEDs(rsi / 25)}</td>
+      <td class="${change1h >= 0 ? 'green' : 'red'}">${change1h.toFixed(2)}%</td>
+      <td class="${change24h >= 0 ? 'green' : 'red'}">${change24h.toFixed(2)}%</td>
+    `;
+    tbody.appendChild(row);
+  }
   feather.replace();
+}
+
+let alarmEnabled = true;
+function testAlarm() {
+  if (alarmEnabled) {
+    document.getElementById("alarm-sound").play();
+  }
+}
+function disableAlarm() {
+  alarmEnabled = false;
+  document.getElementById("alarm-status").textContent = "Alarm AUS";
+}
+
+document.getElementById('mode-toggle').addEventListener('change', function () {
+  document.getElementById('theme').setAttribute('href', this.checked ? 'style-dark.css' : 'style-light.css');
+});
+
+buildTable();
 </script>
 
-<script src="alarm.js"></script>
-<script src="ueberwachung.js"></script>
 </body>
 </html>
