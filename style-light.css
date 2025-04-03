@@ -1,5 +1,5 @@
 body {
-    background-color: #f4f4f4;
+    background-color: #ebebeb;
     color: #222;
     font-family: Arial, sans-serif;
     padding: 20px;
@@ -19,14 +19,14 @@ body {
     background-color: #e0e0e0;
   }
   a {
-    color: #007acc;
+    color: #025e9b;
     text-decoration: none;
   }
   a:hover {
     text-decoration: underline;
   }
-  .green { color: #00c853; }
-  .red { color: #d50000; }
+  .green { color: #028036; }
+  .red { color: #830101; }
   .leds {
     display: inline-flex;
     gap: 4px;
@@ -39,7 +39,7 @@ body {
     background-color: #ccc;
   }
   .led.on {
-    background-color: #00c853;
+    background-color: #6558dda2;
   }
   .alt-row-1 {
     background-color: #ebebeb;
