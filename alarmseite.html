@@ -1,105 +1,99 @@
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Krypto Alarmseite</title>
+  <title>Krypto-Alarmseite</title>
   <style>
     body {
       background-color: #111;
       color: #eee;
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
-    }
-    .alarm-box {
-      position: fixed;
-      top: -200px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: #d0e9ff;
-      color: #000;
       padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      font-size: 14px;
-      min-width: 300px;
-      z-index: 9999;
-      transition: top 0.5s ease;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
     }
-    .alarm-box.show {
+    h1 {
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .alert {
+      position: fixed;
       top: 20px;
+      left: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      z-index: 9999;
     }
-    .alarm-text {
-      flex-grow: 1;
-      margin-left: 10px;
+    .postit {
+      background-color: #cceeff;
+      color: #111;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.2);
+      font-size: 14px;
+      animation: slidein 0.5s ease-out;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
     }
-    .icon-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin-left: 10px;
-      color: #000;
+    @keyframes slidein {
+      from { transform: translateY(-100px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    .ledbar {
+      display: flex;
+      gap: 4px;
+    }
+    .led {
+      width: 10px;
+      height: 10px;
+      background: #444;
+      border-radius: 3px;
+    }
+    .led.on {
+      background: #00ff88;
     }
   </style>
-  <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
-  <div id="alarmBox" class="alarm-box">
-    <i data-feather="alert-circle"></i>
-    <div class="alarm-text" id="alarmText">Alarmtext</div>
-    <a id="coinLink" href="#" class="icon-btn" title="Zum Coin"><i data-feather="external-link"></i></a>
-    <button onclick="hideAlarm()" class="icon-btn" title="Schließen"><i data-feather="x"></i></button>
-  </div>
+  <h1>Krypto-Alarm Testseite</h1>
+  <div class="alert" id="alert-container"></div>
 
-  <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+  <audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
   <script>
-    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
-    const tolerance = 1.5;
-    const refreshInterval = 20000;
+    const coins = [
+      { symbol: "BTCUSDT", price: 65000, entry: 64800 },
+      { symbol: "ETHUSDT", price: 3300, entry: 3290 }
+    ];
 
-    async function fetchTicker(symbol) {
-      const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
-      return res.json();
+    function showAlert(coin) {
+      const distance = Math.abs(coin.price - coin.entry);
+      const percentage = Math.min(1, distance / (coin.entry * 0.015));
+      const ledsOn = Math.floor((1 - percentage) * 8);
+
+      const ledBar = Array.from({ length: 8 }, (_, i) =>
+        `<div class="led ${i < ledsOn ? 'on' : ''}"></div>`
+      ).join('');
+
+      const postit = document.createElement("div");
+      postit.className = "postit";
+      postit.innerHTML = `
+        <strong>${coin.symbol}</strong>
+        Kurs: ${coin.price.toFixed(2)}<br>
+        Einstieg: ${coin.entry.toFixed(2)}<br>
+        Abstand zum Einstieg:
+        <div class="ledbar">${ledBar}</div>
+      `;
+      document.getElementById("alert-container").appendChild(postit);
+
+      const sound = document.getElementById("alarm-sound");
+      sound.volume = 0.5;
+      sound.play().catch(e => console.log("Sound konnte nicht abgespielt werden:", e));
     }
 
-    function showAlarm(symbol, price, entry) {
-      const alarmBox = document.getElementById("alarmBox");
-      const alarmText = document.getElementById("alarmText");
-      const coinLink = document.getElementById("coinLink");
-      const alertSound = document.getElementById("alertSound");
-
-      alarmText.textContent = `${symbol}: Kurs bei ${price.toFixed(2)} – Einstieg bei ${entry.toFixed(2)} bald erreicht!`;
-      coinLink.href = `coin.html?symbol=${symbol}`;
-      alarmBox.classList.add("show");
-      alertSound.play();
-    }
-
-    function hideAlarm() {
-      document.getElementById("alarmBox").classList.remove("show");
-    }
-
-    async function checkPrices() {
-      for (const symbol of watchlist) {
-        try {
-          const data = await fetchTicker(symbol);
-          const price = parseFloat(data.price);
-          const entry = price * 0.995;
-          const diff = Math.abs((price - entry) / entry * 100);
-          if (diff < tolerance) {
-            showAlarm(symbol, price, entry);
-            break;
-          }
-        } catch (err) {
-          console.error("Fehler beim Abrufen von", symbol, err);
-        }
-      }
-    }
-
-    setInterval(checkPrices, refreshInterval);
-    feather.replace();
+    coins.forEach(c => showAlert(c));
   </script>
 </body>
 </html>
