@@ -1,0 +1,106 @@
+!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Krypto Alarmseite</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .alarm-box {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #d0e9ff;
+      color: #000;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      font-size: 14px;
+      min-width: 300px;
+      z-index: 9999;
+      transition: top 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .alarm-box.show {
+      top: 20px;
+    }
+    .alarm-text {
+      flex-grow: 1;
+      margin-left: 10px;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-left: 10px;
+      color: #000;
+    }
+  </style>
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+  <div id="alarmBox" class="alarm-box">
+    <i data-feather="alert-circle"></i>
+    <div class="alarm-text" id="alarmText">Alarmtext</div>
+    <a id="coinLink" href="#" class="icon-btn" title="Zum Coin"><i data-feather="external-link"></i></a>
+    <button onclick="hideAlarm()" class="icon-btn" title="Schließen"><i data-feather="x"></i></button>
+  </div>
+
+  <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+  <script>
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
+    const tolerance = 1.5;
+    const refreshInterval = 20000;
+
+    async function fetchTicker(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+      return res.json();
+    }
+
+    function showAlarm(symbol, price, entry) {
+      const alarmBox = document.getElementById("alarmBox");
+      const alarmText = document.getElementById("alarmText");
+      const coinLink = document.getElementById("coinLink");
+      const alertSound = document.getElementById("alertSound");
+
+      alarmText.textContent = `${symbol}: Kurs bei ${price.toFixed(2)} – Einstieg bei ${entry.toFixed(2)} bald erreicht!`;
+      coinLink.href = `coin.html?symbol=${symbol}`;
+      alarmBox.classList.add("show");
+      alertSound.play();
+    }
+
+    function hideAlarm() {
+      document.getElementById("alarmBox").classList.remove("show");
+    }
+
+    async function checkPrices() {
+      for (const symbol of watchlist) {
+        try {
+          const data = await fetchTicker(symbol);
+          const price = parseFloat(data.price);
+          const entry = price * 0.995;
+          const diff = Math.abs((price - entry) / entry * 100);
+          if (diff < tolerance) {
+            showAlarm(symbol, price, entry);
+            break;
+          }
+        } catch (err) {
+          console.error("Fehler beim Abrufen von", symbol, err);
+        }
+      }
+    }
+
+    setInterval(checkPrices, refreshInterval);
+    feather.replace();
+  </script>
+</body>
+</html>
