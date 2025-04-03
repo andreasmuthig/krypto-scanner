@@ -1,128 +1,114 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Alarmseite mit Drag & Drop</title>
+  <meta charset="UTF-8" />
+  <title>Krypto-Alarm Post-it</title>
+  <script src="https://unpkg.com/feather-icons"></script>
   <style>
     body {
-      margin: 0;
-      padding: 20px;
-      background-color: #111;
+      background: #1b1b1b;
       color: #eee;
       font-family: Arial, sans-serif;
     }
 
-    #alarm-container {
+    .alarm-note {
       position: fixed;
       top: 20px;
-      left: 20px;
-      display: flex;
-      gap: 12px;
+      width: 220px;
+      background: #cceeff;
+      color: #222;
+      font-size: 13px;
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
       z-index: 9999;
-    }
-
-    .post-it {
-      background-color: #cce7ff;
-      color: #000;
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      min-width: 200px;
-      max-width: 250px;
-      cursor: move;
-      position: relative;
+      cursor: grab;
       user-select: none;
     }
 
-    .led-bar {
-      display: flex;
-      gap: 3px;
+    .alarm-note.dragging {
+      opacity: 0.85;
+      cursor: grabbing;
+    }
+
+    .alarm-note a {
+      color: #0077aa;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-flex;
+      align-items: center;
       margin-top: 8px;
     }
 
-    .led {
+    .alarm-note a:hover {
+      text-decoration: underline;
+    }
+
+    .alarm-note .feather {
       width: 14px;
       height: 14px;
-      border-radius: 4px;
-      background-color: #444;
-    }
-
-    .led.active {
-      background-color: #00ff88;
-    }
-
-    .close {
-      position: absolute;
-      top: 4px;
-      right: 8px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    audio {
-      display: none;
+      margin-left: 5px;
+      vertical-align: middle;
     }
   </style>
 </head>
 <body>
+  <h1 style="padding: 20px;">Testseite für Krypto-Alarm</h1>
+  <button onclick="triggerTest()">Alarm Test auslösen</button>
 
-<h1 style="font-size:16px;">Alarmseite – Live Entry Monitor</h1>
+  <script>
+    let positions = [20, 260, 500];
+    let noteIndex = 0;
 
-<div id="alarm-container"></div>
-<audio id="alarm-sound" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
+    function showAlarm(symbol, price, entry) {
+      if (noteIndex >= positions.length) return;
 
-<script>
-  const alarms = [
-    { symbol: "BTCUSDT", current: 70500, entry: 70000 },
-    { symbol: "ETHUSDT", current: 3520, entry: 3500 }
-  ];
+      const note = document.createElement("div");
+      note.className = "alarm-note";
+      note.style.left = positions[noteIndex] + "px";
 
-  const sound = document.getElementById("alarm-sound");
+      note.innerHTML = \`
+        <strong>\${symbol}</strong><br>
+        Kurs: \${price.toFixed(2)} USDT<br>
+        Einstieg: \${entry.toFixed(2)} USDT<br>
+        <a href="coin.html?symbol=\${symbol}" target="_blank">
+          Coin öffnen <i data-feather="external-link"></i>
+        </a>
+      \`;
 
-  function createPostIt({ symbol, current, entry }) {
-    const diff = Math.abs(current - entry);
-    const percent = Math.min(1, diff / (entry * 0.015));
-    const ledsOn = Math.round((1 - percent) * 8);
+      document.body.appendChild(note);
+      noteIndex++;
 
-    const postIt = document.createElement("div");
-    postIt.className = "post-it";
-    postIt.draggable = true;
+      feather.replace();
 
-    postIt.innerHTML = `
-      <div class="close" onclick="this.parentElement.remove()">×</div>
-      <strong>${symbol}</strong><br>
-      Kurs: ${current}<br>
-      Einstieg: ${entry}<br>
-      <div class="led-bar">
-        ${Array.from({ length: 8 }, (_, i) =>
-          `<div class="led ${i < ledsOn ? 'active' : ''}"></div>`).join("")}
-      </div>
-    `;
+      const sound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+      sound.play().catch(() => {
+        console.warn("Ton konnte nicht automatisch abgespielt werden.");
+      });
 
-    enableDrag(postIt);
-    document.getElementById("alarm-container").appendChild(postIt);
-    sound.play().catch(e => console.log("Autoplay-Schutz – Interaktion nötig"));
-  }
+      let isDragging = false, startX = 0;
 
-  function enableDrag(el) {
-    el.addEventListener('dragstart', e => {
-      e.dataTransfer.setData("text/plain", null);
-      const style = window.getComputedStyle(e.target, null);
-      e.dataTransfer.setData("application/x-moz-node", null);
-      e.dataTransfer.setDragImage(e.target, 0, 0);
-      el.style.opacity = '0.5';
-    });
+      note.addEventListener("mousedown", e => {
+        isDragging = true;
+        startX = e.clientX - note.offsetLeft;
+        note.classList.add("dragging");
+      });
 
-    el.addEventListener('dragend', e => {
-      el.style.left = e.pageX + 'px';
-      el.style.top = e.pageY + 'px';
-      el.style.position = 'absolute';
-      el.style.opacity = '1';
-    });
-  }
+      document.addEventListener("mousemove", e => {
+        if (!isDragging) return;
+        e.preventDefault();
+        note.style.left = \`\${e.clientX - startX}px\`;
+      });
 
-  alarms.forEach(alarm => createPostIt(alarm));
-</script>
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+        note.classList.remove("dragging");
+      });
+    }
+
+    function triggerTest() {
+      showAlarm("BTCUSDT", 66400.50, 66000.00);
+    }
+  </script>
 </body>
 </html>
