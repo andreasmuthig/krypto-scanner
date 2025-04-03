@@ -1,0 +1,31 @@
+
+#alarm-box {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #d0ebff;
+    color: #003366;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    z-index: 9999;
+    transition: top 0.5s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #alarm-box.show {
+    top: 20px;
+  }
+  #alarm-box .close-btn {
+    cursor: pointer;
+    margin-left: auto;
+  }
+  #alarm-box .coin-link {
+    color: #004488;
+    text-decoration: none;
+    font-weight: bold;
+  }
