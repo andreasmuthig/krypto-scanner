@@ -19,7 +19,7 @@ body {
     background-color: #e0e0e0;
   }
   a {
-    color: #4495cb;
+    color: #8dc6eb;
     text-decoration: none;
   }
   a:hover {
@@ -39,7 +39,7 @@ body {
     background-color: #ccc;
   }
   .led.on {
-    background-color: #04a91aa2;
+    background-color: #026f10b2;
   }
   .alt-row-1 {
     background-color: #ebebeb;
