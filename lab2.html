@@ -3,63 +3,66 @@
 <head>
   <meta charset="UTF-8" />
   <title>Krypto-Scanner LAB – Unterstützungen & Widerstände</title>
-  <style>
-    body {
-      background-color: #f4f4f4;
-      color: #222;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 14px;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #ccc;
-      text-align: center;
-    }
-    th {
-      background-color: #e0e0e0;
-    }
-    a {
-      color: #007acc;
-      text-decoration: none;
-    }
-    .green { color: #00c853; }
-    .red { color: #d50000; }
-    .leds {
-      display: inline-flex;
-      gap: 4px;
-      vertical-align: middle;
-    }
-    .led {
-      width: 12px;
-      height: 12px;
-      border-radius: 4px;
-      background-color: #ccc;
-    }
-    .led.on {
-      background-color: #00c853;
-    }
-    .feather {
-      width: 14px;
-      height: 14px;
-      vertical-align: text-bottom;
-      margin-right: 4px;
-    }
-    .row-gray {
-      background-color: #ebebeb;
-    }
-    .row-green {
-      background-color: #e2f5d5;
-    }
-  </style>
+  <link id="theme" rel="stylesheet" href="style-dark.css">
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
+
+<style>
+.toggle-switch {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #ccc;
+  user-select: none;
+}
+.toggle-switch input[type="checkbox"] {
+  appearance: none;
+  width: 40px;
+  height: 20px;
+  background: #444;
+  border-radius: 20px;
+  position: relative;
+  outline: none;
+  cursor: pointer;
+}
+.toggle-switch input[type="checkbox"]::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: #00ff88;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: 0.3s;
+}
+.toggle-switch input[type="checkbox"]:checked::before {
+  left: 22px;
+  background: #f1f1f1;
+}
+</style>
+<div class="toggle-switch">
+  🌙
+  <input type="checkbox" id="mode-toggle">
+  ☀️
+</div>
+<script>
+  const toggle = document.getElementById('mode-toggle');
+  toggle.checked = true; // Dark mode default
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) {
+      document.getElementById('theme').setAttribute('href', 'style-dark.css');
+    } else {
+      document.getElementById('theme').setAttribute('href', 'style-light.css');
+    }
+  });
+</script>
+
   <h1 style="font-size: 16px;">Krypto Scanner</h1>
   <table>
     <thead>
@@ -124,7 +127,7 @@
         const ema = getEMATrend();
         const support = (entry * 0.97).toFixed(2);
         const resistance = (tp2 * 1.02).toFixed(2);
-        const rowClass = i % 2 === 0 ? "row-gray" : "row-green";
+        const rowClass = i % 2 === 0 ? "alt-row-1" : "alt-row-2";
 
         const row = document.createElement("tr");
         row.className = rowClass;
@@ -149,8 +152,8 @@
           <i data-feather="activity" class="feather"></i> EMA: ${ema} &nbsp;&nbsp;
           <i data-feather="trending-up" class="feather"></i> MACD: ${macd} &nbsp;&nbsp;
           <i data-feather="bar-chart-2" class="feather"></i> Volumen: ${volume.toFixed(2)} &nbsp;&nbsp;
-          <span style="color: #00aa00;">🔻 Unterstützung: ${support} USDT</span> &nbsp;&nbsp;
-          <span style="color: #cc0000;">🔺 Widerstand: ${resistance} USDT</span>
+          <span style="color: #00ff88;">🔻 Unterstützung: ${support} USDT</span> &nbsp;&nbsp;
+          <span style="color: #ff4444;">🔺 Widerstand: ${resistance} USDT</span>
         `;
         infoRow.appendChild(td);
         tbody.appendChild(infoRow);
