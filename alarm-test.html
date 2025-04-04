@@ -1,17 +1,58 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Krypto Alarmüberwachung</title>
-  <link rel="stylesheet" href="style-alarm.css">
-  <script src="https://unpkg.com/feather-icons"></script>
+  <meta charset="UTF-8">
+  <title>Krypto Alarm Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 30px;
+    }
+    .alarm-box {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      width: 220px;
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      padding: 10px;
+      animation: slideDown 0.5s ease-out;
+      z-index: 1000;
+    }
+    .alarm-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+    }
+    .alarm-body {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    @keyframes slideDown {
+      from { top: -100px; opacity: 0; }
+      to { top: 10px; opacity: 1; }
+    }
+  </style>
 </head>
 <body>
 
-<audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
-<div id="counter" style="position: fixed; top: 10px; right: 10px; font-size: 10px; color: #ccc;"></div>
-<div id="alarms-container"></div>
+<h2>Krypto Alarm – Test</h2>
+<p>Dieses Beispiel zeigt ein Post-it mit fester Position und Testdaten.</p>
 
-<script src="alarm.js"></script>
+<div class="alarm-box">
+  <div class="alarm-header">
+    <span>BTCUSDT</span>
+    <span>🕒 20:45</span>
+  </div>
+  <div class="alarm-body">
+    <div>📉 Kurs: 67800.00 USDT</div>
+    <div>🎯 Einstieg: 67920.00 USDT</div>
+    <div style="margin-top:6px; font-size: 11px; color: #555;">Alarm ausgelöst – <b>1,5 % vor Einstieg</b></div>
+  </div>
+</div>
+
 </body>
 </html>
