@@ -1,30 +1,54 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
+    background-color: #f0f0f0;
+    margin: 0;
     padding: 20px;
   }
-  .alarm-box {
-    position: fixed;
-    top: 20px;
-    left: 10px;
-    width: 200px;
-    background-color: #d0eaff;
-    border: 1px solid #007acc;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    z-index: 1000;
+  
+  button {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
   }
+  
+  button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .alarm-box {
+    position: absolute;
+    width: 200px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    cursor: move;
+  }
+  
   .alarm-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
   }
+  
+  .alarm-icons {
+    display: flex;
+    gap: 5px;
+  }
+  
   .alarm-body {
-    margin-top: 10px;
+    font-size: 14px;
   }
-  .alarm-icons i {
-    margin-left: 10px;
+  
+  .close-btn {
     cursor: pointer;
   }
-   

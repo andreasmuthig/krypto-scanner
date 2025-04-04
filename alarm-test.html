@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
@@ -19,6 +19,20 @@ const alarmsContainer = document.getElementById("alarms-container");
 const startButton = document.getElementById("startButton");
 const statusDiv = document.getElementById("status");
 let isMonitoring = false;
+let audioContext;
+
+// Fallback: Ton mit Web Audio API erzeugen
+function playFallbackSound() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  const oscillator = audioContext.createOscillator();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 440;
+  oscillator.connect(audioContext.destination);
+  oscillator.start();
+  setTimeout(() => oscillator.stop(), 1000);
+}
 
 function triggerAlarm(coin, entry, price, index) {
   if (!coin || document.getElementById("alarm-" + coin)) return;
@@ -45,12 +59,22 @@ function triggerAlarm(coin, entry, price, index) {
   alarmsContainer.appendChild(box);
   feather.replace();
 
-  // Audio abspielen mit Fehlerbehandlung
   console.log("Versuche, Alarm-Sound abzuspielen...");
   alarmSound.play().then(() => {
     console.log("Sound erfolgreich abgespielt!");
   }).catch(error => {
     console.error("Fehler beim Abspielen des Sounds:", error);
+    console.log("Verwende Fallback-Sound...");
+    playFallbackSound();
+    if (Notification.permission === "granted") {
+      new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
+        }
+      });
+    }
   });
 
   box.querySelector(".close-btn").onclick = () => box.remove();
@@ -70,10 +94,14 @@ function triggerAlarm(coin, entry, price, index) {
 
 startButton.addEventListener("click", () => {
   if (!isMonitoring) {
+    console.log("Entsperre Audio-Context...");
     alarmSound.play().then(() => {
       alarmSound.pause();
+      console.log("Audio erfolgreich entsperrt");
     }).catch(err => {
       console.error("Fehler beim Entsperren des Audio-Contexts:", err);
+      console.log("Entsperre Web Audio API als Fallback...");
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
     });
 
     isMonitoring = true;
@@ -88,6 +116,7 @@ startButton.addEventListener("click", () => {
 function startMonitoring() {
   console.log("Starte Überwachung...");
   setTimeout(() => {
+    console.log("Trigger Alarme...");
     triggerAlarm("BTCUSDT", 67800.00, 67805.23, 0);
     triggerAlarm("ETHUSDT", 3500.00, 3498.92, 1);
     triggerAlarm("SOLUSDT", 185.00, 184.96, 2);
