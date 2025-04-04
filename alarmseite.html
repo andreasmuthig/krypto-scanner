@@ -1,114 +1,99 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>Krypto-Alarm Post-it</title>
+  <meta charset="UTF-8">
+  <title>Krypto-Alarm</title>
+  <link rel="stylesheet" href="style-alarm.css">
   <script src="https://unpkg.com/feather-icons"></script>
-  <style>
-    body {
-      background: #1b1b1b;
-      color: #eee;
-      font-family: Arial, sans-serif;
-    }
-
-    .alarm-note {
-      position: fixed;
-      top: 20px;
-      width: 220px;
-      background: #cceeff;
-      color: #222;
-      font-size: 13px;
-      padding: 12px;
-      border-radius: 6px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-      z-index: 9999;
-      cursor: grab;
-      user-select: none;
-    }
-
-    .alarm-note.dragging {
-      opacity: 0.85;
-      cursor: grabbing;
-    }
-
-    .alarm-note a {
-      color: #0077aa;
-      text-decoration: none;
-      font-weight: bold;
-      display: inline-flex;
-      align-items: center;
-      margin-top: 8px;
-    }
-
-    .alarm-note a:hover {
-      text-decoration: underline;
-    }
-
-    .alarm-note .feather {
-      width: 14px;
-      height: 14px;
-      margin-left: 5px;
-      vertical-align: middle;
-    }
-  </style>
 </head>
 <body>
-  <h1 style="padding: 20px;">Testseite für Krypto-Alarm</h1>
-  <button onclick="triggerTest()">Alarm Test auslösen</button>
 
-  <script>
-    let positions = [20, 260, 500];
-    let noteIndex = 0;
+<audio id="alarmSound" src="alert.mp3" preload="auto"></audio>
+<button id="startButton">Alarmüberwachung starten</button>
+<div id="alarms-container"></div>
 
-    function showAlarm(symbol, price, entry) {
-      if (noteIndex >= positions.length) return;
+<script>
+const alarmSound = document.getElementById("alarmSound");
+const alarmsContainer = document.getElementById("alarms-container");
+const startButton = document.getElementById("startButton");
+let isMonitoring = false;
 
-      const note = document.createElement("div");
-      note.className = "alarm-note";
-      note.style.left = positions[noteIndex] + "px";
+function triggerAlarm(coin, entry, price, index) {
+  if (!coin || document.getElementById("alarm-" + coin)) return;
 
-      note.innerHTML = \`
-        <strong>\${symbol}</strong><br>
-        Kurs: \${price.toFixed(2)} USDT<br>
-        Einstieg: \${entry.toFixed(2)} USDT<br>
-        <a href="coin.html?symbol=\${symbol}" target="_blank">
-          Coin öffnen <i data-feather="external-link"></i>
-        </a>
-      \`;
+  const box = document.createElement("div");
+  box.className = "alarm-box";
+  box.id = "alarm-" + coin;
+  box.style.left = (10 + index * 220) + "px";
 
-      document.body.appendChild(note);
-      noteIndex++;
+  box.innerHTML = `
+    <div class="alarm-header">
+      <strong>${coin}</strong>
+      <div class="alarm-icons">
+        <a href="coin.html?symbol=${coin}" target="_blank"><i data-feather="external-link"></i></a>
+        <i class="close-btn" data-feather="x"></i>
+      </div>
+    </div>
+    <div class="alarm-body">
+      <div>🔔 <strong>Kurs:</strong> ${price.toFixed(2)} USDT</div>
+      <div>🎯 <strong>Einstieg:</strong> ${entry.toFixed(2)} USDT</div>
+    </div>
+  `;
 
-      feather.replace();
+  alarmsContainer.appendChild(box);
+  feather.replace();
 
-      const sound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-      sound.play().catch(() => {
-        console.warn("Ton konnte nicht automatisch abgespielt werden.");
-      });
-
-      let isDragging = false, startX = 0;
-
-      note.addEventListener("mousedown", e => {
-        isDragging = true;
-        startX = e.clientX - note.offsetLeft;
-        note.classList.add("dragging");
-      });
-
-      document.addEventListener("mousemove", e => {
-        if (!isDragging) return;
-        e.preventDefault();
-        note.style.left = \`\${e.clientX - startX}px\`;
-      });
-
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-        note.classList.remove("dragging");
+  // Audio abspielen mit Fehlerbehandlung
+  alarmSound.play().catch(error => {
+    console.log("Audio konnte nicht abgespielt werden:", error);
+    // Optional: Benachrichtigung als Fallback
+    if (Notification.permission === "granted") {
+      new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
+        }
       });
     }
+  });
 
-    function triggerTest() {
-      showAlarm("BTCUSDT", 66400.50, 66000.00);
-    }
-  </script>
+  box.querySelector(".close-btn").onclick = () => box.remove();
+
+  let offsetX;
+  const drag = (e) => {
+    box.style.left = (e.clientX - offsetX) + "px";
+  };
+  box.onmousedown = (e) => {
+    offsetX = e.clientX - box.getBoundingClientRect().left;
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", () => {
+      document.removeEventListener("mousemove", drag);
+    }, { once: true });
+  };
+}
+
+// Überwachung starten
+startButton.addEventListener("click", () => {
+  if (!isMonitoring) {
+    // Audio einmal abspielen, um es zu entsperren
+    alarmSound.play().then(() => {
+      alarmSound.pause(); // Sofort pausieren, nur zur Freischaltung
+      console.log("Audio entsperrt");
+    }).catch(err => console.log("Entsperrung fehlgeschlagen:", err));
+    isMonitoring = true;
+    startMonitoring();
+  }
+});
+
+function startMonitoring() {
+  setTimeout(() => {
+    triggerAlarm("BTCUSDT", 67800.00, 67805.23, 0);
+    triggerAlarm("ETHUSDT", 3500.00, 3498.92, 1);
+    triggerAlarm("SOLUSDT", 185.00, 184.96, 2);
+  }, 1000);
+}
+</script>
+
 </body>
 </html>
