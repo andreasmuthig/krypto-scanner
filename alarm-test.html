@@ -1,122 +1,17 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Krypto-Alarm</title>
+  <meta charset="UTF-8" />
+  <title>Krypto Alarmüberwachung</title>
   <link rel="stylesheet" href="style-alarm.css">
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
 
 <audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
-<button id="startButton">Alarmüberwachung starten</button>
-<div id="status" style="margin-top: 10px; font-weight: bold;"></div>
+<div id="counter" style="position: fixed; top: 10px; right: 10px; font-size: 10px; color: #ccc;"></div>
 <div id="alarms-container"></div>
 
-<script>
-const alarmSound = document.getElementById("alarmSound");
-const alarmsContainer = document.getElementById("alarms-container");
-const startButton = document.getElementById("startButton");
-const statusDiv = document.getElementById("status");
-let isMonitoring = false;
-
-function triggerAlarm(coin, entry, price, index) {
-  if (!coin || document.getElementById("alarm-" + coin)) return;
-
-  const box = document.createElement("div");
-  box.className = "alarm-box";
-  box.id = "alarm-" + coin;
-  box.style.left = (10 + index * 220) + "px";
-
-  box.innerHTML = `
-    <div class="alarm-header">
-      <strong>${coin}</strong>
-      <div class="alarm-icons">
-        <a href="coin.html?symbol=${coin}" target="_blank"><i data-feather="external-link"></i></a>
-        <i class="close-btn" data-feather="x"></i>
-      </div>
-    </div>
-    <div class="alarm-body">
-      <div><strong>Kurs:</strong> ${price.toFixed(2)} USDT</div>
-      <div><strong>Einstieg:</strong> ${entry.toFixed(2)} USDT</div>
-    </div>
-  `;
-
-  alarmsContainer.appendChild(box);
-  feather.replace();
-
-  alarmSound.play().catch(error => {
-    console.error("Soundfehler:", error);
-  });
-
-  box.querySelector(".close-btn").onclick = () => box.remove();
-
-  let offsetX;
-  const drag = (e) => {
-    box.style.left = (e.clientX - offsetX) + "px";
-  };
-  box.onmousedown = (e) => {
-    offsetX = e.clientX - box.getBoundingClientRect().left;
-    document.addEventListener("mousemove", drag);
-    document.addEventListener("mouseup", () => {
-      document.removeEventListener("mousemove", drag);
-    }, { once: true });
-  };
-}
-
-startButton.addEventListener("click", () => {
-  if (!isMonitoring) {
-    alarmSound.play().then(() => {
-      alarmSound.pause();
-    }).catch(err => {
-      console.error("Audio-Startfehler:", err);
-    });
-
-    isMonitoring = true;
-    statusDiv.textContent = "Überwachung aktiv...";
-    statusDiv.style.color = "green";
-    startButton.textContent = "Überwachung läuft";
-    startButton.disabled = true;
-    setTimeout(() => {
-      triggerAlarm("BTCUSDT", 67800.00, 67805.23, 0);
-      triggerAlarm("ETHUSDT", 3500.00, 3498.92, 1);
-      triggerAlarm("SOLUSDT", 185.00, 184.96, 2);
-    }, 1000);
-  }
-});
-</script>
-
-<style>
-body {
-  background: #f4f4f4;
-  font-family: Arial, sans-serif;
-  padding: 20px;
-}
-button {
-  padding: 10px 20px;
-  font-weight: bold;
-}
-.alarm-box {
-  position: absolute;
-  top: 70px;
-  width: 200px;
-  background: #cce4ff;
-  border: 1px solid #888;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-  z-index: 1000;
-}
-.alarm-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-.alarm-icons i {
-  cursor: pointer;
-  margin-left: 8px;
-}
-</style>
+<script src="alarm.js"></script>
 </body>
 </html>
