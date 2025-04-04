@@ -10,12 +10,14 @@
 
 <audio id="alarmSound" src="alert.mp3" preload="auto"></audio>
 <button id="startButton">Alarmüberwachung starten</button>
+<div id="status" style="margin-top: 10px; font-weight: bold;"></div>
 <div id="alarms-container"></div>
 
 <script>
 const alarmSound = document.getElementById("alarmSound");
 const alarmsContainer = document.getElementById("alarms-container");
 const startButton = document.getElementById("startButton");
+const statusDiv = document.getElementById("status");
 let isMonitoring = false;
 
 function triggerAlarm(coin, entry, price, index) {
@@ -44,9 +46,12 @@ function triggerAlarm(coin, entry, price, index) {
   feather.replace();
 
   // Audio abspielen mit Fehlerbehandlung
-  alarmSound.play().catch(error => {
-    console.log("Audio konnte nicht abgespielt werden:", error);
-    // Optional: Benachrichtigung als Fallback
+  console.log("Versuche, Alarm-Sound abzuspielen...");
+  alarmSound.play().then(() => {
+    console.log("Sound erfolgreich abgespielt!");
+  }).catch(error => {
+    console.error("Fehler beim Abspielen des Sounds:", error);
+    // Fallback: Benachrichtigung anzeigen
     if (Notification.permission === "granted") {
       new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
     } else if (Notification.permission !== "denied") {
@@ -77,17 +82,27 @@ function triggerAlarm(coin, entry, price, index) {
 startButton.addEventListener("click", () => {
   if (!isMonitoring) {
     // Audio einmal abspielen, um es zu entsperren
+    console.log("Entsperre Audio-Context...");
     alarmSound.play().then(() => {
       alarmSound.pause(); // Sofort pausieren, nur zur Freischaltung
-      console.log("Audio entsperrt");
-    }).catch(err => console.log("Entsperrung fehlgeschlagen:", err));
+      console.log("Audio erfolgreich entsperrt");
+    }).catch(err => {
+      console.error("Fehler beim Entsperren des Audio-Contexts:", err);
+    });
+
     isMonitoring = true;
+    statusDiv.textContent = "Überwachung aktiv...";
+    statusDiv.style.color = "green";
+    startButton.textContent = "Überwachung läuft";
+    startButton.disabled = true; // Button deaktivieren, um Mehrfachklicks zu vermeiden
     startMonitoring();
   }
 });
 
 function startMonitoring() {
+  console.log("Starte Überwachung...");
   setTimeout(() => {
+    console.log("Trigger Alarme...");
     triggerAlarm("BTCUSDT", 67800.00, 67805.23, 0);
     triggerAlarm("ETHUSDT", 3500.00, 3498.92, 1);
     triggerAlarm("SOLUSDT", 185.00, 184.96, 2);
