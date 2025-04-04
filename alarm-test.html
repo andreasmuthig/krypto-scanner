@@ -2,57 +2,95 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Krypto Alarm Test</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      padding: 30px;
-    }
-    .alarm-box {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      width: 220px;
-      background: #e3f2fd;
-      border: 1px solid #90caf9;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-      padding: 10px;
-      animation: slideDown 0.5s ease-out;
-      z-index: 1000;
-    }
-    .alarm-header {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-    }
-    .alarm-body {
-      margin-top: 10px;
-      font-size: 14px;
-    }
-    @keyframes slideDown {
-      from { top: -100px; opacity: 0; }
-      to { top: 10px; opacity: 1; }
-    }
-  </style>
+  <title>Alarm Test</title>
+  <link rel="stylesheet" href="style-alarm.css">
+  <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
 
-<h2>Krypto Alarm – Test</h2>
-<p>Dieses Beispiel zeigt ein Post-it mit fester Position und Testdaten.</p>
+<audio id="alarmSound" src="alert.mp3" preload="auto"></audio>
+<button id="startButton">Alarmüberwachung starten</button>
+<div id="status" style="margin-top: 10px; font-weight: bold;"></div>
+<div id="alarms-container"></div>
 
-<div class="alarm-box">
-  <div class="alarm-header">
-    <span>BTCUSDT</span>
-    <span>🕒 20:45</span>
-  </div>
-  <div class="alarm-body">
-    <div>📉 Kurs: 67800.00 USDT</div>
-    <div>🎯 Einstieg: 67920.00 USDT</div>
-    <div style="margin-top:6px; font-size: 11px; color: #555;">Alarm ausgelöst – <b>1,5 % vor Einstieg</b></div>
-  </div>
-</div>
+<script>
+const alarmSound = document.getElementById("alarmSound");
+const alarmsContainer = document.getElementById("alarms-container");
+const startButton = document.getElementById("startButton");
+const statusDiv = document.getElementById("status");
+let isMonitoring = false;
+
+function triggerAlarm(coin, entry, price, index) {
+  if (!coin || document.getElementById("alarm-" + coin)) return;
+
+  const box = document.createElement("div");
+  box.className = "alarm-box";
+  box.id = "alarm-" + coin;
+  box.style.left = (10 + index * 220) + "px";
+
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  box.innerHTML = `
+    <div class="alarm-header">
+      <strong>${coin}</strong>
+      <span style="float:right;">🕓 ${now}</span>
+      <div class="alarm-icons">
+        <a href="coin.html?symbol=${coin}" target="_blank"><i data-feather="external-link"></i></a>
+        <i class="close-btn" data-feather="x"></i>
+      </div>
+    </div>
+    <div class="alarm-body">
+      <div>📉 <strong>Kurs:</strong> ${price.toFixed(2)} USDT</div>
+      <div>🎯 <strong>Einstieg:</strong> ${entry.toFixed(2)} USDT</div>
+      <div style="color:#888; font-size: 12px;">Alarm ausgelöst – 1,5 % vor Einstieg</div>
+    </div>
+  `;
+
+  alarmsContainer.appendChild(box);
+  feather.replace();
+
+  alarmSound.play().then(() => {
+    console.log("Sound erfolgreich abgespielt!");
+  }).catch(error => {
+    console.error("Fehler beim Abspielen des Sounds:", error);
+    if (Notification.permission === "granted") {
+      new Notification(`Alarm für ${coin}! Kurs: ${price.toFixed(2)} USDT`);
+    }
+  });
+
+  box.querySelector(".close-btn").onclick = () => box.remove();
+
+  let offsetX;
+  const drag = (e) => {
+    box.style.left = (e.clientX - offsetX) + "px";
+  };
+  box.onmousedown = (e) => {
+    offsetX = e.clientX - box.getBoundingClientRect().left;
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", () => {
+      document.removeEventListener("mousemove", drag);
+    }, { once: true });
+  };
+}
+
+startButton.addEventListener("click", () => {
+  alarmSound.play().then(() => {
+    alarmSound.pause();
+    isMonitoring = true;
+    statusDiv.textContent = "Überwachung aktiv...";
+    statusDiv.style.color = "green";
+    startButton.style.display = "none";
+    setTimeout(() => {
+      triggerAlarm("BTCUSDT", 67920.00, 67800.00, 0);
+      triggerAlarm("ETHUSDT", 3500.00, 3498.92, 1);
+      triggerAlarm("SOLUSDT", 185.00, 184.96, 2);
+    }, 1000);
+  }).catch(err => {
+    console.error("Audio nicht freigegeben:", err);
+    alert("Bitte erlaube die Soundwiedergabe.");
+  });
+});
+</script>
 
 </body>
 </html>
