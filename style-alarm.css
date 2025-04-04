@@ -1,0 +1,33 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 20px;
+  }
+  .alarm-box {
+    position: fixed;
+    top: 20px;
+    background-color: #e3f2fd;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 12px;
+    min-width: 200px;
+    z-index: 1000;
+    transition: top 0.3s ease;
+  }
+  .alarm-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .alarm-icons {
+    float: right;
+    display: flex;
+    gap: 8px;
+  }
+  .alarm-icons i {
+    cursor: pointer;
+  }
+  .alarm-body div {
+    margin: 4px 0;
+  }
+  
