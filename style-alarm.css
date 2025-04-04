@@ -22,12 +22,14 @@ body {
   
   .alarm-box {
     position: absolute;
-    width: 200px;
+    width: fit-content; /* Breite passt sich dem Inhalt an */
+    min-width: 180px; /* Mindestbreite, damit die Box nicht zu schmal wird */
+    max-width: 300px; /* Maximale Breite, damit die Box nicht zu breit wird */
     background-color: white;
     border: 1px solid #ccc;
     border-radius: 5px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    padding: 10px;
+    padding: 15px;
     cursor: move;
   }
   
@@ -36,17 +38,18 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
-    margin-bottom: 5px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
   }
   
   .alarm-icons {
     display: flex;
-    gap: 5px;
+    gap: 8px;
   }
   
   .alarm-body {
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 1.5;
   }
   
   .close-btn {

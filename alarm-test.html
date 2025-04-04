@@ -40,7 +40,17 @@ function triggerAlarm(coin, entry, price, index) {
   const box = document.createElement("div");
   box.className = "alarm-box";
   box.id = "alarm-" + coin;
-  box.style.left = (10 + index * 220) + "px";
+
+  // Dynamische Positionierung basierend auf der Breite der vorherigen Boxen
+  const previousBoxes = document.querySelectorAll(".alarm-box");
+  let leftPosition = 10;
+  for (let i = 0; i < index; i++) {
+    if (previousBoxes[i]) {
+      const boxWidth = previousBoxes[i].offsetWidth || 220; // Fallback-Breite, falls offsetWidth nicht verfügbar
+      leftPosition += boxWidth + 10; // 10px Abstand zwischen Boxen
+    }
+  }
+  box.style.left = leftPosition + "px";
 
   box.innerHTML = `
     <div class="alarm-header">
