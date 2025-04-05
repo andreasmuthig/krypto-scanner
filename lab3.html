@@ -37,13 +37,14 @@
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 20px;
     }
-    /* Asset-Kacheln: Hintergrundfarbe angepasst */
+    /* Asset-Kacheln: Hintergrundfarbe und Schatten angepasst */
     .asset-tile {
-      background-color: #695d4f;
+      background-color: rgba(105, 93, 79, 0.9);
       padding: 15px;
       border-radius: 8px;
       text-align: center;
       font-size: 14px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
     .asset-tile h2 {
       font-size: 18px;
@@ -408,9 +409,7 @@
     function updateRSIBar(asset, tile) {
       const rsiBar = tile.querySelector(".rsi-led-bar");
       const segmentsCount = 8;
-      // Berechne, wie viele Segmente aktiv sein sollen (0 bis 8)
       const activeSegments = Math.floor(asset.rsi / (100 / segmentsCount));
-      // Bestimme die Farbe der aktiven Segmente
       let activeColor = "green";
       if (asset.rsi < 30) {
         activeColor = "blue";
