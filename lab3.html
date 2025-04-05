@@ -13,8 +13,6 @@
       margin: 0;
       padding: 20px;
     }
-
-    /* Header */
     header {
       text-align: center;
       margin-bottom: 20px;
@@ -23,7 +21,6 @@
       font-size: 24px;
       margin: 0;
     }
-
     /* Toggle Button */
     #toggleMonitoring {
       display: block;
@@ -38,15 +35,12 @@
     #toggleMonitoring.active {
       background-color: #28a745;
     }
-
     /* Asset Grid */
     .asset-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
     }
-
-    /* Asset Tile */
     .asset-tile {
       background-color: #1e1e1e;
       padding: 15px;
@@ -59,10 +53,28 @@
     }
     .price {
       font-size: 16px;
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
-
-    /* LED-Balken */
+    .price-change {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    .score {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    .trade-direction {
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .trade-direction i {
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+    }
     .led-bar {
       display: flex;
       gap: 4px;
@@ -79,6 +91,9 @@
     .segment.active {
       background-color: #0f0;
     }
+    .segment.final {
+      background-color: blue;
+    }
   </style>
 </head>
 <body>
@@ -92,23 +107,26 @@
 
   <!-- Asset Grid -->
   <div class="asset-grid" id="assetGrid">
-    <!-- Asset-Kacheln werden per JavaScript generiert -->
+    <!-- Kacheln werden per JavaScript generiert -->
   </div>
 
-  <!-- Audio Alarm -->
+  <!-- Audioalarm -->
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
+
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
 
   <script>
     // Definition der Assets
     const assets = [
-      { name: "BTCUSDT", currentPrice: 49000, entryPrice: 50000, margin: 1000, alarmTriggered: false, priceHistory: [] },
-      { name: "ETHUSDT", currentPrice: 3200, entryPrice: 3300, margin: 100, alarmTriggered: false, priceHistory: [] },
-      { name: "SOLUSDT", currentPrice: 100, entryPrice: 110, margin: 10, alarmTriggered: false, priceHistory: [] },
-      { name: "XRPUSDT", currentPrice: 0.9, entryPrice: 1.0, margin: 0.1, alarmTriggered: false, priceHistory: [] },
-      { name: "ADAUSDT", currentPrice: 1.2, entryPrice: 1.3, margin: 0.1, alarmTriggered: false, priceHistory: [] },
-      { name: "DOTUSDT", currentPrice: 20, entryPrice: 22, margin: 2, alarmTriggered: false, priceHistory: [] },
-      { name: "LINKUSDT", currentPrice: 7, entryPrice: 7.5, margin: 0.5, alarmTriggered: false, priceHistory: [] },
-      { name: "AVAXUSDT", currentPrice: 15, entryPrice: 16, margin: 1, alarmTriggered: false, priceHistory: [] }
+      { name: "BTCUSDT", currentPrice: 49000, entryPrice: 50000, margin: 1000, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "ETHUSDT", currentPrice: 3200, entryPrice: 3300, margin: 100, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "SOLUSDT", currentPrice: 100, entryPrice: 110, margin: 10, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "XRPUSDT", currentPrice: 0.9, entryPrice: 1.0, margin: 0.1, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "ADAUSDT", currentPrice: 1.2, entryPrice: 1.3, margin: 0.1, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "DOTUSDT", currentPrice: 20, entryPrice: 22, margin: 2, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "LINKUSDT", currentPrice: 7, entryPrice: 7.5, margin: 0.5, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" },
+      { name: "AVAXUSDT", currentPrice: 15, entryPrice: 16, margin: 1, alarmTriggered: false, priceHistory: [], tradeDirection: "neutral" }
     ];
 
     let monitoringActive = false;
@@ -125,64 +143,127 @@
         tile.innerHTML = `
           <h2>${asset.name}</h2>
           <div class="price">Preis: ${asset.currentPrice.toFixed(2)}</div>
+          <div class="price-change">0.00%</div>
+          <div class="score">Score: 0</div>
+          <div class="trade-direction">
+            <i data-feather="arrow-up"></i> Long
+          </div>
           <div class="led-bar">
             ${'<div class="segment"></div>'.repeat(8)}
           </div>
         `;
         assetGrid.appendChild(tile);
       });
+      feather.replace();
     }
 
-    // Aktualisiere den LED-Balken in einer Kachel
+    // Aktualisierung des LED-Balkens
     function updateLedBar(asset, tile) {
       const ledBar = tile.querySelector('.led-bar');
       const segments = ledBar.querySelectorAll('.segment');
-      // Berechnung: progress = (currentPrice - (entryPrice - margin)) / margin
       let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
       progress = Math.max(0, Math.min(progress, 1));
       const segmentsToLight = Math.floor(progress * segments.length);
       segments.forEach((seg, index) => {
+        seg.classList.remove('active', 'final');
         if (index < segmentsToLight) {
           seg.classList.add('active');
-        } else {
-          seg.classList.remove('active');
+          // Wenn das letzte Segment erreicht und progress 100% ist
+          if (index === segments.length - 1 && progress === 1) {
+            seg.classList.add('final');
+          }
         }
       });
     }
 
-    // Aktualisiere die Preis-Anzeige in einer Kachel
+    // Aktualisierung des Preis-Displays
     function updatePriceDisplay(asset, tile) {
       const priceDiv = tile.querySelector('.price');
       priceDiv.textContent = 'Preis: ' + asset.currentPrice.toFixed(2);
     }
 
-    // Prüfe, ob der Alarm ausgelöst werden soll
-    function checkAlarm(asset) {
-      if (!asset.alarmTriggered && asset.currentPrice >= asset.entryPrice) {
-        // Alarm auslösen (Frühwarnung)
-        document.getElementById('alarmAudio').play();
-        asset.alarmTriggered = true;
-        console.log(asset.name + " Alarm ausgelöst!");
+    // Aktualisierung der Preisveränderung in %
+    function updatePriceChange(asset, tile) {
+      const priceChangeDiv = tile.querySelector('.price-change');
+      if (asset.priceHistory.length > 1) {
+        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
+        const change = ((asset.currentPrice - prevPrice) / prevPrice) * 100;
+        const sign = change >= 0 ? '+' : '';
+        priceChangeDiv.textContent = sign + change.toFixed(2) + '%';
+      } else {
+        priceChangeDiv.textContent = '0.00%';
       }
     }
 
-    // Simuliere Preisupdates (dieser Teil würde in der echten Anwendung durch WebSocket/REST ersetzt)
+    // Aktualisierung des Scores (als einfache Kennzahl)
+    function updateScoreDisplay(asset, tile) {
+      const scoreElement = tile.querySelector('.score');
+      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      progress = Math.max(0, Math.min(progress, 1));
+      const score = Math.floor(progress * 100);
+      scoreElement.textContent = 'Score: ' + score;
+    }
+
+    // Aktualisierung der Trade-Richtungsanzeige mithilfe von Feather Icons
+    function updateTradeDirection(asset, tile) {
+      const directionContainer = tile.querySelector('.trade-direction');
+      // Bestimme Trade-Richtung basierend auf der Preisveränderung
+      if (asset.priceHistory.length > 1) {
+        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
+        if (asset.currentPrice > prevPrice) {
+          asset.tradeDirection = "long";
+        } else if (asset.currentPrice < prevPrice) {
+          asset.tradeDirection = "short";
+        } else {
+          asset.tradeDirection = "neutral";
+        }
+      }
+      if (asset.tradeDirection === "long") {
+        directionContainer.innerHTML = '<i data-feather="arrow-up"></i> Long';
+      } else if (asset.tradeDirection === "short") {
+        directionContainer.innerHTML = '<i data-feather="arrow-down"></i> Short';
+      } else {
+        directionContainer.innerHTML = 'Neutral';
+      }
+      feather.replace();
+    }
+
+    // Überprüfung und Auslösung des Audioalarms mit Sprachansage
+    function checkAlarm(asset) {
+      if (!asset.alarmTriggered && asset.currentPrice >= asset.entryPrice) {
+        asset.alarmTriggered = true;
+        document.getElementById('alarmAudio').play();
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(asset.name + " Alarm!");
+          window.speechSynthesis.speak(utterance);
+        } else {
+          console.log(asset.name + " Alarm!");
+        }
+      }
+    }
+
+    // Aktualisierung einer einzelnen Kachel
+    function updateTile(asset, index) {
+      const tile = document.getElementById('asset-' + index);
+      updatePriceDisplay(asset, tile);
+      updatePriceChange(asset, tile);
+      updateLedBar(asset, tile);
+      updateScoreDisplay(asset, tile);
+      updateTradeDirection(asset, tile);
+      checkAlarm(asset);
+    }
+
+    // Simulation von Preisupdates (ersetzt in der echten Anwendung WebSocket/REST)
     function updatePrices() {
       assets.forEach((asset, index) => {
-        // Simuliere einen zufälligen Anstieg zwischen 0 und 5 Einheiten
-        const change = Math.random() * 5;
+        // Simuliere eine Preisänderung (zufällig erhöhen oder senken)
+        const change = Math.random() * 10 - 5;
         asset.currentPrice += change;
-        // Aktualisiere Preis-Historie (kann für Stabilitätsprüfungen genutzt werden)
         asset.priceHistory.push(asset.currentPrice);
         if (asset.priceHistory.length > 5) {
           asset.priceHistory.shift();
         }
-        
-        // Hole die entsprechende Kachel
-        const tile = document.getElementById('asset-' + index);
-        updatePriceDisplay(asset, tile);
-        updateLedBar(asset, tile);
-        checkAlarm(asset);
+        updateTile(asset, index);
       });
     }
 
@@ -204,6 +285,5 @@
     // Initiale Generierung der Asset-Kacheln
     generateAssetTiles();
   </script>
-
 </body>
 </html>
