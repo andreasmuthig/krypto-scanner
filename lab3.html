@@ -240,7 +240,36 @@
         const data = await fetchData(symbol);
         const rsi = await fetchRSI(symbol);
         const tile = tiles[i];
+        const entry = data.price * 0.995;
+        const tp1 = data.price * 1.015;
+        const tp2 = data.price * 1.03;
+        const sl = data.price * 0.985;
+        const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
+
         tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
+        tile.querySelector(".price-change").textContent = `24h: ${data.change24h.toFixed(2)}%`;
+        tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
+        tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
+        tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
+        tile.querySelector(".entry-price").textContent = entry.toFixed(2);
+        tile.querySelector(".tp1").textContent = tp1.toFixed(2);
+        tile.querySelector(".tp2").textContent = tp2.toFixed(2);
+        tile.querySelector(".sl").textContent = sl.toFixed(2);
+        tile.querySelector(".crv").textContent = crv;
+
+        // ALARM
+        const alarmThreshold = entry + (tp1 - entry) * 0.8;
+        if (!tile.dataset.alarm && data.price >= entry && data.price < alarmThreshold) {
+          tile.dataset.alarm = "true";
+          const audio = document.getElementById("alarmAudio");
+          audio.play();
+          if (window.speechSynthesis && document.getElementById("toggleSpeechBtn").classList.contains("active")) {
+            const voice = new SpeechSynthesisUtterance(symbol.replace("USDT", "") + " erreicht den Einstiegspreis");
+            window.speechSynthesis.speak(voice);
+          }
+        }
+      }
+    }`;
         tile.querySelector(".price-change").textContent = `24h: ${data.change24h.toFixed(2)}%`;
         tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
         tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
