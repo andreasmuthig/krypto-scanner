@@ -131,6 +131,23 @@
   <script src="https://unpkg.com/feather-icons"></script>
   <script>
     feather.replace();
+
+    let monitoring = false;
+    let monitorInterval;
+
+    document.getElementById("toggleMonitoring").addEventListener("click", () => {
+      monitoring = !monitoring;
+      const btn = document.getElementById("toggleMonitoring");
+      if (monitoring) {
+        btn.textContent = "Überwachung stoppen";
+        btn.classList.add("active");
+        monitorInterval = setInterval(buildTiles, 30000); // alle 30 Sekunden
+      } else {
+        btn.textContent = "Überwachung starten";
+        btn.classList.remove("active");
+        clearInterval(monitorInterval);
+      }
+    });
     const assetGrid = document.getElementById("assetGrid");
     const watchlist = [
   "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
