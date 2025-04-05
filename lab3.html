@@ -254,20 +254,60 @@ let countdown = 30;
     buildTiles();
 
     async function updateTiles() {
-      const tiles = document.querySelectorAll(".asset-tile");
-      for (let i = 0; i < watchlist.length; i++) {
-        const symbol = watchlist[i];
-        const data = await fetchData(symbol);
-        const rsi = await fetchRSI(symbol);
-        const tile = tiles[i];
+  const tiles = document.querySelectorAll(".asset-tile");
+  for (let i = 0; i < watchlist.length; i++) {
+    const symbol = watchlist[i];
+    const data = await fetchData(symbol);
+    const rsi = await fetchRSI(symbol);
+    const tile = tiles[i];
 
-        const entry = data.price * 0.995;
-        const tp1 = data.price * 1.015;
-        const tp2 = data.price * 1.03;
-        const sl = data.price * 0.985;
-        const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
+    const entry = data.price * 0.995;
+    const tp1 = data.price * 1.015;
+    const tp2 = data.price * 1.03;
+    const sl = data.price * 0.985;
+    const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
 
-        tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
+    tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
+    tile.querySelector(".entry-price").textContent = entry.toFixed(2);
+    tile.querySelector(".tp1").textContent = tp1.toFixed(2);
+    tile.querySelector(".tp2").textContent = tp2.toFixed(2);
+    tile.querySelector(".sl").textContent = sl.toFixed(2);
+    tile.querySelector(".crv").textContent = crv;
+    tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
+    tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
+    tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
+
+    // LED Balken für Annäherung an Einstieg
+    const ledSegments = tile.querySelectorAll(".segment");
+    const progress = Math.min(1, Math.max(0, (data.price - (entry - 0.01)) / (entry * 0.01)));
+    const ledsToLight = Math.floor(progress * ledSegments.length);
+    ledSegments.forEach((seg, index) => {
+      seg.classList.remove("active", "final");
+      if (index < ledsToLight) {
+        seg.classList.add("active");
+        if (index === ledSegments.length - 1) {
+          seg.classList.add("final");
+        }
+      }
+    });
+
+    // Audio-Alarm wenn Einstieg erreicht
+    const alarmThreshold = entry + (tp1 - entry) * 0.8;
+    if (!tile.dataset.alarm && data.price >= entry && data.price < alarmThreshold) {
+      tile.dataset.alarm = "true";
+      const audio = document.getElementById("alarmAudio");
+      const speech = document.getElementById("toggleSpeechBtn").classList.contains("active");
+      const symbolName = symbol.replace("USDT", "");
+      if (document.getElementById("toggleAlarmBtn").classList.contains("active")) {
+        audio.play();
+      }
+      if (speech && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(`${symbolName} erreicht den Einstiegspreis`);
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  }
+}`;
         tile.querySelector(".entry-price").textContent = entry.toFixed(2);
         tile.querySelector(".tp1").textContent = tp1.toFixed(2);
         tile.querySelector(".tp2").textContent = tp2.toFixed(2);
