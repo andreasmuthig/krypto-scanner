@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crypto Monitor</title>
   <style>
-    /* Grundlegende Dark-Mode Styles */
+    /* Dark Mode und Grundlayout */
     body {
       background-color: #121212;
       color: #e0e0e0;
@@ -13,8 +13,7 @@
       margin: 0;
       padding: 20px;
     }
-
-    /* Toggle-Button für die Überwachung */
+    /* Toggle-Button für Überwachung */
     #toggleMonitoring {
       display: block;
       margin: 0 auto 20px;
@@ -24,17 +23,14 @@
       border-radius: 5px;
       color: #e0e0e0;
       cursor: pointer;
-      z-index: 1; /* Über dem Post-it-Menü */
-      position: relative;
     }
     #toggleMonitoring.active {
       background-color: #28a745;
     }
-
     /* Asset Grid */
     .asset-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 20px;
     }
     .asset-tile {
@@ -42,19 +38,13 @@
       padding: 15px;
       border-radius: 8px;
       text-align: center;
+      font-size: 14px;
     }
     .asset-tile h2 {
       font-size: 18px;
       margin: 0 0 10px;
     }
-    .price {
-      font-size: 16px;
-      margin-bottom: 5px;
-    }
-    .price-change,
-    .score,
-    .trade-direction {
-      font-size: 14px;
+    .price, .price-change, .score, .trade-direction {
       margin-bottom: 5px;
     }
     .trade-direction {
@@ -86,57 +76,21 @@
     .segment.final {
       background-color: blue;
     }
-
-    /* Menü im Post-it-Stil (links am Bildschirm) */
-    .side-menu {
-      position: fixed;
-      top: 20px;
-      left: 0;
-      width: 200px;
-      background-color: #fffa87; /* Post-it-Farbe */
-      border: 1px solid #e0e0e0;
-      padding: 10px;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-      transition: transform 0.3s ease;
-      transform: translateX(-160px); /* Geschlossen: nur ~40px sichtbar */
-      cursor: pointer;
-      z-index: 999;
+    /* Zusätzliche Trade-Infos */
+    .trade-info {
+      text-align: left;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.4;
     }
-    .side-menu.open {
-      transform: translateX(0); /* Offen: komplett sichtbar */
-    }
-    .menu-item {
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-    }
-    .menu-item i {
-      margin-right: 8px;
-    }
-    /* Glüh-Effekt: aktiv = grün, inaktiv = rot */
-    .menu-item.active {
-      box-shadow: 0 0 8px 2px green;
-    }
-    .menu-item.inactive {
-      box-shadow: 0 0 8px 2px red;
+    .trade-info div {
+      margin-bottom: 2px;
     }
   </style>
 </head>
 <body>
 
-  <!-- Post-it-Menü -->
-  <div id="sideMenu" class="side-menu">
-    <div class="menu-item active" id="toggleAlarm">
-      <i data-feather="bell"></i>
-      <span>Alarm</span>
-    </div>
-    <div class="menu-item active" id="toggleSpeech">
-      <i data-feather="mic"></i>
-      <span>Sprachausgabe</span>
-    </div>
-  </div>
-
-  <!-- Überwachung starten/stoppen -->
+  <!-- Toggle-Button für die Asset-Überwachung -->
   <button id="toggleMonitoring">Überwachung starten</button>
 
   <!-- Asset Grid -->
@@ -154,106 +108,138 @@
     /* Globale Schalter */
     let alarmEnabled = true;
     let speechEnabled = true;
-    /* CRV-Schwellenwert: 80 % des Weges von Entry bis TP1 */
+    /* CRV-Schwellenwert: z. B. 80 % des Weges von Entry bis TP1 */
     const crvThreshold = 0.8;
 
-    /* Beispielhafte Asset-Daten */
+    /* Asset-Daten – zusätzlich erweiterte Informationen */
     const assets = [
-      {
-        name: "BTCUSDT",
-        displayName: "BTC",
-        fullName: "Bitcoin",
-        currentPrice: 49000,
-        entryPrice: 50000,
-        tp1: 50500,
-        margin: 1000,
-        alarmTriggered: false,
+      { 
+        name: "BTCUSDT", 
+        displayName: "BTC", 
+        fullName: "Bitcoin", 
+        currentPrice: 49000, 
+        entryPrice: 50000, 
+        tp1: 51000,
+        tp2: 52000,
+        sl: 49500,
+        margin: 1000, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "ETHUSDT",
-        displayName: "ETH",
-        fullName: "Ethereum",
-        currentPrice: 3200,
-        entryPrice: 3300,
-        tp1: 3350,
-        margin: 100,
-        alarmTriggered: false,
+      { 
+        name: "ETHUSDT", 
+        displayName: "ETH", 
+        fullName: "Ethereum", 
+        currentPrice: 3200, 
+        entryPrice: 3300, 
+        tp1: 3400,
+        tp2: 3500,
+        sl: 3200,
+        margin: 100, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "SOLUSDT",
-        displayName: "SOL",
-        fullName: "Solana",
-        currentPrice: 100,
-        entryPrice: 110,
-        tp1: 112,
-        margin: 10,
-        alarmTriggered: false,
+      { 
+        name: "SOLUSDT", 
+        displayName: "SOL", 
+        fullName: "Solana", 
+        currentPrice: 100, 
+        entryPrice: 110, 
+        tp1: 120,
+        tp2: 130,
+        sl: 105,
+        margin: 10, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "XRPUSDT",
-        displayName: "XRP",
-        fullName: "Ripple",
-        currentPrice: 0.9,
-        entryPrice: 1.0,
-        tp1: 1.05,
-        margin: 0.1,
-        alarmTriggered: false,
+      { 
+        name: "XRPUSDT", 
+        displayName: "XRP", 
+        fullName: "Ripple", 
+        currentPrice: 0.9, 
+        entryPrice: 1.0, 
+        tp1: 1.2,
+        tp2: 1.3,
+        sl: 0.9,
+        margin: 0.1, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "ADAUSDT",
-        displayName: "ADA",
-        fullName: "Cardano",
-        currentPrice: 1.2,
-        entryPrice: 1.3,
-        tp1: 1.35,
-        margin: 0.1,
-        alarmTriggered: false,
+      { 
+        name: "ADAUSDT", 
+        displayName: "ADA", 
+        fullName: "Cardano", 
+        currentPrice: 1.2, 
+        entryPrice: 1.3, 
+        tp1: 1.5,
+        tp2: 1.6,
+        sl: 1.2,
+        margin: 0.1, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "DOTUSDT",
-        displayName: "DOT",
-        fullName: "Polkadot",
-        currentPrice: 20,
-        entryPrice: 22,
-        tp1: 23,
-        margin: 2,
-        alarmTriggered: false,
+      { 
+        name: "DOTUSDT", 
+        displayName: "DOT", 
+        fullName: "Polkadot", 
+        currentPrice: 20, 
+        entryPrice: 22, 
+        tp1: 24,
+        tp2: 25,
+        sl: 21,
+        margin: 2, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "LINKUSDT",
-        displayName: "LINK",
-        fullName: "Chainlink",
-        currentPrice: 7,
-        entryPrice: 7.5,
-        tp1: 7.8,
-        margin: 0.5,
-        alarmTriggered: false,
+      { 
+        name: "LINKUSDT", 
+        displayName: "LINK", 
+        fullName: "Chainlink", 
+        currentPrice: 7, 
+        entryPrice: 7.5, 
+        tp1: 8,
+        tp2: 8.5,
+        sl: 7,
+        margin: 0.5, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       },
-      {
-        name: "AVAXUSDT",
-        displayName: "AVAX",
-        fullName: "Avalanche",
-        currentPrice: 15,
-        entryPrice: 16,
-        tp1: 16.5,
-        margin: 1,
-        alarmTriggered: false,
+      { 
+        name: "AVAXUSDT", 
+        displayName: "AVAX", 
+        fullName: "Avalanche", 
+        currentPrice: 15, 
+        entryPrice: 16, 
+        tp1: 17,
+        tp2: 18,
+        sl: 15,
+        margin: 1, 
+        alarmTriggered: false, 
         priceHistory: [],
-        tradeDirection: "neutral"
+        tradeDirection: "neutral",
+        change24h: 0,
+        change1h: 0
       }
     ];
 
@@ -261,7 +247,7 @@
     let simulationInterval;
     const assetGrid = document.getElementById("assetGrid");
 
-    /* Kacheln generieren */
+    /* Generiere die Asset-Kacheln inklusive zusätzlicher Trade-Infos */
     function generateAssetTiles() {
       assetGrid.innerHTML = "";
       assets.forEach((asset, index) => {
@@ -279,18 +265,26 @@
           <div class="led-bar">
             ${'<div class="segment"></div>'.repeat(8)}
           </div>
+          <div class="trade-info">
+            <div>Einstieg: <span class="entry-price">${asset.entryPrice.toFixed(2)}</span></div>
+            <div>TP1: <span class="tp1">${asset.tp1.toFixed(2)}</span></div>
+            <div>TP2: <span class="tp2">${asset.tp2.toFixed(2)}</span></div>
+            <div>SL: <span class="sl">${asset.sl.toFixed(2)}</span></div>
+            <div>CRV: <span class="crv">-</span></div>
+            <div>24h: <span class="change24h">0.00%</span></div>
+            <div>1h: <span class="change1h">0.00%</span></div>
+          </div>
         `;
         assetGrid.appendChild(tile);
       });
       feather.replace();
     }
 
-    /* LED-Balken aktualisieren */
+    /* Aktualisiert den LED-Balken */
     function updateLedBar(asset, tile) {
       const ledBar = tile.querySelector(".led-bar");
       const segments = ledBar.querySelectorAll(".segment");
-      let progress =
-        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
       progress = Math.max(0, Math.min(progress, 1));
       const segmentsToLight = Math.floor(progress * segments.length);
       segments.forEach((seg, index) => {
@@ -304,13 +298,13 @@
       });
     }
 
-    /* Preis anzeigen */
+    /* Aktualisiert den Preis-Display */
     function updatePriceDisplay(asset, tile) {
       const priceDiv = tile.querySelector(".price");
       priceDiv.textContent = "Preis: " + asset.currentPrice.toFixed(2);
     }
 
-    /* Prozentuale Kursveränderung */
+    /* Aktualisiert die prozentuale Preisveränderung */
     function updatePriceChange(asset, tile) {
       const priceChangeDiv = tile.querySelector(".price-change");
       if (asset.priceHistory.length > 1) {
@@ -323,17 +317,16 @@
       }
     }
 
-    /* Einfacher Score basierend auf dem Fortschritt zum Einstiegspreis */
+    /* Aktualisiert den Score (basierend auf dem Fortschritt zum Einstieg) */
     function updateScoreDisplay(asset, tile) {
       const scoreElement = tile.querySelector(".score");
-      let progress =
-        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
       progress = Math.max(0, Math.min(progress, 1));
       const score = Math.floor(progress * 100);
       scoreElement.textContent = "Score: " + score;
     }
 
-    /* Trade-Richtung aktualisieren */
+    /* Aktualisiert die Trade-Richtungsanzeige */
     function updateTradeDirection(asset, tile) {
       const directionContainer = tile.querySelector(".trade-direction");
       if (asset.priceHistory.length > 1) {
@@ -356,23 +349,31 @@
       feather.replace();
     }
 
-    /* Alarm auslösen, falls CRV-Schwelle noch nicht überschritten */
+    /* Aktualisiert die zusätzlichen Trade-Infos */
+    function updateTradeInfo(asset, tile) {
+      tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
+      tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
+      tile.querySelector(".tp2").textContent = asset.tp2.toFixed(2);
+      tile.querySelector(".sl").textContent = asset.sl.toFixed(2);
+      // Berechne CRV: (TP1 - Entry) / (Entry - SL)
+      const crv = (asset.tp1 - asset.entryPrice) / (asset.entryPrice - asset.sl);
+      tile.querySelector(".crv").textContent = crv.toFixed(2);
+      tile.querySelector(".change24h").textContent = (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
+      tile.querySelector(".change1h").textContent = (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
+    }
+
+    /* Alarm-Check unter CRV-Bedingung */
     function checkAlarm(asset) {
-      const threshold =
-        asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
-      if (
-        !asset.alarmTriggered &&
-        asset.currentPrice >= asset.entryPrice &&
-        asset.currentPrice < threshold
-      ) {
+      const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
+      if (!asset.alarmTriggered &&
+          asset.currentPrice >= asset.entryPrice &&
+          asset.currentPrice < threshold) {
         asset.alarmTriggered = true;
         if (alarmEnabled) {
           document.getElementById("alarmAudio").play();
         }
         if (speechEnabled && "speechSynthesis" in window) {
-          const utterance = new SpeechSynthesisUtterance(
-            asset.fullName + " erreicht den Einstiegspreis"
-          );
+          const utterance = new SpeechSynthesisUtterance(asset.fullName + " erreicht den Einstiegspreis");
           window.speechSynthesis.speak(utterance);
         } else if (!speechEnabled) {
           console.log(asset.fullName + " erreicht den Einstiegspreis");
@@ -388,10 +389,11 @@
       updateLedBar(asset, tile);
       updateScoreDisplay(asset, tile);
       updateTradeDirection(asset, tile);
+      updateTradeInfo(asset, tile);
       checkAlarm(asset);
     }
 
-    /* Simulierte Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzen) */
+    /* Simuliert Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzen) */
     function updatePrices() {
       assets.forEach((asset, index) => {
         const change = Math.random() * 10 - 5;
@@ -400,6 +402,9 @@
         if (asset.priceHistory.length > 5) {
           asset.priceHistory.shift();
         }
+        // Simuliere zufällige Werte für 24h- und 1h-Änderung
+        asset.change24h = (Math.random() * 20 - 10).toFixed(2);
+        asset.change1h = (Math.random() * 4 - 2).toFixed(2);
         updateTile(asset, index);
       });
     }
@@ -417,27 +422,6 @@
         btn.classList.remove("active");
         clearInterval(simulationInterval);
       }
-    });
-
-    /* Klick auf das Post-it-Menü – öffnet/schließt */
-    document.getElementById("sideMenu").addEventListener("click", function () {
-      this.classList.toggle("open");
-    });
-
-    /* Alarm-Funktion ein-/ausschalten */
-    document.getElementById("toggleAlarm").addEventListener("click", function (e) {
-      e.stopPropagation(); // Verhindert, dass der Klick das Menü ein-/ausfährt
-      alarmEnabled = !alarmEnabled;
-      this.classList.toggle("active", alarmEnabled);
-      this.classList.toggle("inactive", !alarmEnabled);
-    });
-
-    /* Sprachausgabe ein-/ausschalten */
-    document.getElementById("toggleSpeech").addEventListener("click", function (e) {
-      e.stopPropagation();
-      speechEnabled = !speechEnabled;
-      this.classList.toggle("active", speechEnabled);
-      this.classList.toggle("inactive", !speechEnabled);
     });
 
     /* Initiale Generierung der Asset-Kacheln */
