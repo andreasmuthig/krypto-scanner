@@ -121,8 +121,10 @@
   </style>
 </head>
 <body>
-  <div id="counter" style="text-align: center; margin-bottom: 10px; color: orange; font-size: 14px;">Nächste Aktualisierung in: <span id="countdown">30</span>s</div>
-$1
+  <div id="counter" style="text-align: center; margin-bottom: 10px; color: orange; font-size: 14px;">
+  Nächste Aktualisierung in: <span id="countdown">30</span>s
+</div>
+  <div id="controls">
     <button id="toggleMonitoring">Überwachung starten</button>
     <button id="toggleAlarmBtn" class="active">Alarm: aktiv</button>
     <button id="toggleSpeechBtn" class="active">Sprachausgabe: aktiv</button>
@@ -134,33 +136,38 @@ $1
     feather.replace();
 
     let monitoring = false;
-    let monitorInterval;
+let monitorInterval;
+let countdownInterval;
+let countdown = 30;
 
     document.getElementById("toggleMonitoring").addEventListener("click", () => {
-      monitoring = !monitoring;
-      const btn = document.getElementById("toggleMonitoring");
-      if (monitoring) {
-        btn.textContent = "Überwachung stoppen";
-        btn.classList.add("active");
-        let countdown = 30;
-        document.getElementById("countdown").textContent = countdown;
-        monitorInterval = setInterval(() => {
-          countdown = 30;
-          document.getElementById("countdown").textContent = countdown;
-          updateTiles();
-        }, 30000);
-        setInterval(() => {
-          if (monitoring && countdown > 0) {
-            countdown--;
-            document.getElementById("countdown").textContent = countdown;
-          }
-        }, 1000); // alle 30 Sekunden
-      } else {
-        btn.textContent = "Überwachung starten";
-        btn.classList.remove("active");
-        clearInterval(monitorInterval);
+  monitoring = !monitoring;
+  const btn = document.getElementById("toggleMonitoring");
+  const countdownDisplay = document.getElementById("countdown");
+
+  if (monitoring) {
+    btn.textContent = "Überwachung stoppen";
+    btn.classList.add("active");
+    countdown = 30;
+    countdownDisplay.textContent = countdown;
+    updateTiles();
+    monitorInterval = setInterval(() => {
+      updateTiles();
+      countdown = 30;
+    }, 30000);
+    countdownInterval = setInterval(() => {
+      if (countdown > 0) {
+        countdown--;
+        countdownDisplay.textContent = countdown;
       }
-    });
+    }, 1000);
+  } else {
+    btn.textContent = "Überwachung starten";
+    btn.classList.remove("active");
+    clearInterval(monitorInterval);
+    clearInterval(countdownInterval);
+  }
+});
     const assetGrid = document.getElementById("assetGrid");
     const watchlist = [
   "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
