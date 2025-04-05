@@ -268,14 +268,7 @@ let countdown = 30;
     const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
 
     tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
-    tile.querySelector(".entry-price").textContent = entry.toFixed(2);
-    tile.querySelector(".tp1").textContent = tp1.toFixed(2);
-    tile.querySelector(".tp2").textContent = tp2.toFixed(2);
-    tile.querySelector(".sl").textContent = sl.toFixed(2);
-    tile.querySelector(".crv").textContent = crv;
-    tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
-    tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
-    tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
+    
 
     // LED Balken für Annäherung an Einstieg
     const ledSegments = tile.querySelectorAll(".segment");
@@ -308,14 +301,7 @@ let countdown = 30;
     }
   }
 }`;
-        tile.querySelector(".entry-price").textContent = entry.toFixed(2);
-        tile.querySelector(".tp1").textContent = tp1.toFixed(2);
-        tile.querySelector(".tp2").textContent = tp2.toFixed(2);
-        tile.querySelector(".sl").textContent = sl.toFixed(2);
-        tile.querySelector(".crv").textContent = crv;
-        tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
-        tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
-        tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
+        
       }
     }
   </script>
