@@ -132,6 +132,8 @@
   <div class="asset-grid" id="assetGrid"></div>
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
   <script src="https://unpkg.com/feather-icons"></script>
+<script>
+  const alarmFlags = {}; // verhindert Mehrfachauslösung je Asset
   <script>
     feather.replace();
 
@@ -293,17 +295,19 @@ let countdown = 30;
 
     // Audio-/Sprachalarm bei Annäherung
     const alarmThreshold = entry + (tp1 - entry) * 0.8;
-    if (!tile.dataset.alarm && data.price >= entry && data.price < alarmThreshold) {
-      tile.dataset.alarm = "true";
-      const audio = document.getElementById("alarmAudio");
-      const speech = document.getElementById("toggleSpeechBtn").classList.contains("active");
-      const symbolName = symbol.replace("USDT", "");
-      if (document.getElementById("toggleAlarmBtn").classList.contains("active")) {
-        audio.play();
-      }
-      if (speech && window.speechSynthesis) {
-        const utterance = new SpeechSynthesisUtterance(`${symbolName} erreicht den Einstiegspreis`);
-        window.speechSynthesis.speak(utterance);
+    if (!alarmFlags[symbol] && data.price >= entry && data.price < alarmThreshold) {
+  alarmFlags[symbol] = true;
+  const audio = document.getElementById("alarmAudio");
+  const speech = document.getElementById("toggleSpeechBtn").classList.contains("active");
+  const symbolName = symbol.replace("USDT", "");
+  if (document.getElementById("toggleAlarmBtn").classList.contains("active")) {
+    audio.play();
+  }
+  if (speech && window.speechSynthesis && !window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(`${symbolName} erreicht den Einstiegspreis`);
+    window.speechSynthesis.speak(utterance);
+  }
       }
     }
 
