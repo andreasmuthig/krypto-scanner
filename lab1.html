@@ -145,6 +145,19 @@
   <!-- Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
   <script>
+    // Mapping für korrekte Asset-Namen
+    const assetNames = {
+      BTCUSDT: "Bitcoin",
+      ETHUSDT: "Ethereum",
+      SOLUSDT: "Solana",
+      XRPUSDT: "Ripple",
+      DOGEUSDT: "Dogecoin",
+      ADAUSDT: "Cardano",
+      DOTUSDT: "Polkadot",
+      LINKUSDT: "Chainlink",
+      AVAXUSDT: "Avalanche"
+    };
+
     // Globale Schalter
     let alarmEnabled = true;
     let speechEnabled = true;
@@ -211,7 +224,7 @@
       return {
         name: symbol,
         displayName: symbol.slice(0, -4), // z.B. "BTC" aus "BTCUSDT"
-        fullName: symbol.slice(0, -4),    // Demo: gleich wie displayName
+        fullName: assetNames[symbol] || symbol.slice(0, -4),
         currentPrice: price,
         entryPrice: price * 0.995,
         tp1: price * 1.015,
@@ -273,7 +286,7 @@
       feather.replace();
     }
 
-    // Aktualisiere den LED-Balken (Fortschritt)
+    /* Aktualisiere den LED-Balken (Fortschritt) */
     function updateLedBar(asset, tile) {
       const ledBar = tile.querySelector(".led-bar");
       const segments = ledBar.querySelectorAll(".segment");
@@ -291,13 +304,13 @@
       });
     }
 
-    // Aktualisiere die Preis-Anzeige
+    /* Aktualisiere die Preis-Anzeige */
     function updatePriceDisplay(asset, tile) {
       const priceDiv = tile.querySelector(".price");
       priceDiv.textContent = "Preis: " + asset.currentPrice.toFixed(2);
     }
 
-    // Aktualisiere die prozentuale Preisveränderung
+    /* Aktualisiere die prozentuale Preisveränderung */
     function updatePriceChange(asset, tile) {
       const priceChangeDiv = tile.querySelector(".price-change");
       if (asset.priceHistory.length > 1) {
@@ -310,7 +323,7 @@
       }
     }
 
-    // Aktualisiere den Score (basierend auf dem Fortschritt)
+    /* Aktualisiere den Score (basierend auf dem Fortschritt) */
     function updateScoreDisplay(asset, tile) {
       const scoreElement = tile.querySelector(".score");
       let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
@@ -319,7 +332,7 @@
       scoreElement.textContent = "Score: " + score;
     }
 
-    // Aktualisiere die Trade-Richtungsanzeige mit Minus-Icon im Neutralfall
+    /* Aktualisiere die Trade-Richtungsanzeige mit Minus-Icon im Neutralfall */
     function updateTradeDirection(asset, tile) {
       const directionContainer = tile.querySelector(".trade-direction");
       if (asset.priceHistory.length > 1) {
@@ -342,7 +355,7 @@
       feather.replace();
     }
 
-    // Aktualisiere die zusätzlichen Trade-Infos
+    /* Aktualisiere die zusätzlichen Trade-Infos */
     function updateTradeInfo(asset, tile) {
       tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
       tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
@@ -358,7 +371,7 @@
       updateRSIBar(asset, tile);
     }
 
-    // Aktualisiere den RSI LED-Streifen
+    /* Aktualisiere den RSI LED-Streifen */
     function updateRSIBar(asset, tile) {
       const rsiBar = tile.querySelector(".rsi-led-bar");
       const segmentsCount = 8;
@@ -380,7 +393,7 @@
       rsiBar.innerHTML = html;
     }
 
-    // Alarm-Check unter CRV-Bedingung
+    /* Alarm-Check unter CRV-Bedingung */
     function checkAlarm(asset) {
       const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
       if (
@@ -394,14 +407,16 @@
         }
         if (speechEnabled && "speechSynthesis" in window) {
           const utterance = new SpeechSynthesisUtterance(asset.fullName + " erreicht den Einstiegspreis");
-          window.speechSynthesis.speak(utterance);
+          if (!window.speechSynthesis.speaking) {
+            window.speechSynthesis.speak(utterance);
+          }
         } else if (!speechEnabled) {
           console.log(asset.fullName + " erreicht den Einstiegspreis");
         }
       }
     }
 
-    // Aktualisiert eine einzelne Kachel
+    /* Aktualisiert eine einzelne Kachel */
     function updateTile(asset, index) {
       const tile = document.getElementById("asset-" + index);
       updatePriceDisplay(asset, tile);
@@ -413,7 +428,7 @@
       checkAlarm(asset);
     }
 
-    // Aktualisiere alle Assets: echte Daten abrufen und aktualisieren
+    /* Aktualisiere alle Assets: echte Daten abrufen und aktualisieren */
     async function updateAllAssets() {
       const now = Date.now();
       let updateRSIFlag = false;
@@ -478,7 +493,7 @@
     // Initiale Generierung der Asset-Kacheln
     async function init() {
       await generateAssetTiles();
-      // Optional: Überwachung direkt starten
+      // Optional: Überwachung direkt starten:
       // monitoringActive = true;
       // simulationInterval = setInterval(updateAllAssets, 1000);
     }
