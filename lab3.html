@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crypto Monitor</title>
   <style>
-    /* Dark Mode und Grundlayout */
+    /* Grundlegender Dark Mode */
     body {
       background-color: #121212;
       color: #e0e0e0;
@@ -13,16 +13,91 @@
       margin: 0;
       padding: 20px;
     }
+    /* Vertikale Sidebar im Farbton #ba7c34 */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #ba7c34;
+      padding: 10px;
+      border-radius: 4px;
+      width: 50px;
+      transition: width 0.3s ease;
+      overflow: hidden;
+      z-index: 1000;
+    }
+    .sidebar:hover {
+      width: 150px;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+    .menu-label {
+      color: #fff;
+      font-size: 14px;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    /* Toggle Switch Style */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #555;
+      transition: 0.4s;
+      border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #28a745;
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    /* Hauptinhalt (Asset Grid etc.) */
+    .content {
+      margin-left: 170px; /* Damit die Sidebar nicht überlappt */
+    }
     /* Toggle-Button für Überwachung */
     #toggleMonitoring {
       display: block;
-      margin: 0 auto 20px;
+      margin: 20px auto;
       padding: 10px 20px;
       background-color: #444;
       border: none;
       border-radius: 5px;
       color: #e0e0e0;
       cursor: pointer;
+      z-index: 1;
+      position: relative;
     }
     #toggleMonitoring.active {
       background-color: #28a745;
@@ -76,7 +151,7 @@
     .segment.final {
       background-color: blue;
     }
-    /* Zusätzliche Trade-Infos */
+    /* Zusätzliche Trade-Infos in der Kachel */
     .trade-info {
       text-align: left;
       margin-top: 10px;
@@ -89,13 +164,32 @@
   </style>
 </head>
 <body>
+  <!-- Vertikale Sidebar -->
+  <div class="sidebar">
+    <div class="menu-item">
+      <span class="menu-label">Alarm</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleAlarm" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="menu-item">
+      <span class="menu-label">Sprachausgabe</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleSpeech" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
 
-  <!-- Toggle-Button für die Asset-Überwachung -->
-  <button id="toggleMonitoring">Überwachung starten</button>
-
-  <!-- Asset Grid -->
-  <div class="asset-grid" id="assetGrid">
-    <!-- Kacheln werden per JavaScript generiert -->
+  <div class="content">
+    <!-- Toggle-Button für die Asset-Überwachung -->
+    <button id="toggleMonitoring">Überwachung starten</button>
+  
+    <!-- Asset Grid -->
+    <div class="asset-grid" id="assetGrid">
+      <!-- Kacheln werden per JavaScript generiert -->
+    </div>
   </div>
 
   <!-- Audioalarm -->
@@ -110,8 +204,8 @@
     let speechEnabled = true;
     /* CRV-Schwellenwert: z. B. 80 % des Weges von Entry bis TP1 */
     const crvThreshold = 0.8;
-
-    /* Asset-Daten – zusätzlich erweiterte Informationen */
+  
+    /* Asset-Daten – erweitert um zusätzliche Trade-Infos */
     const assets = [
       { 
         name: "BTCUSDT", 
@@ -242,11 +336,11 @@
         change1h: 0
       }
     ];
-
+  
     let monitoringActive = false;
     let simulationInterval;
     const assetGrid = document.getElementById("assetGrid");
-
+  
     /* Generiere die Asset-Kacheln inklusive zusätzlicher Trade-Infos */
     function generateAssetTiles() {
       assetGrid.innerHTML = "";
@@ -279,12 +373,13 @@
       });
       feather.replace();
     }
-
-    /* Aktualisiert den LED-Balken */
+  
+    /* Aktualisiere den LED-Balken */
     function updateLedBar(asset, tile) {
       const ledBar = tile.querySelector(".led-bar");
       const segments = ledBar.querySelectorAll(".segment");
-      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      let progress =
+        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
       progress = Math.max(0, Math.min(progress, 1));
       const segmentsToLight = Math.floor(progress * segments.length);
       segments.forEach((seg, index) => {
@@ -297,14 +392,14 @@
         }
       });
     }
-
-    /* Aktualisiert den Preis-Display */
+  
+    /* Aktualisiere die Preis-Anzeige */
     function updatePriceDisplay(asset, tile) {
       const priceDiv = tile.querySelector(".price");
       priceDiv.textContent = "Preis: " + asset.currentPrice.toFixed(2);
     }
-
-    /* Aktualisiert die prozentuale Preisveränderung */
+  
+    /* Aktualisiere die prozentuale Preisveränderung */
     function updatePriceChange(asset, tile) {
       const priceChangeDiv = tile.querySelector(".price-change");
       if (asset.priceHistory.length > 1) {
@@ -316,17 +411,18 @@
         priceChangeDiv.textContent = "0.00%";
       }
     }
-
-    /* Aktualisiert den Score (basierend auf dem Fortschritt zum Einstieg) */
+  
+    /* Aktualisiere den Score (basierend auf dem Fortschritt) */
     function updateScoreDisplay(asset, tile) {
       const scoreElement = tile.querySelector(".score");
-      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      let progress =
+        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
       progress = Math.max(0, Math.min(progress, 1));
       const score = Math.floor(progress * 100);
       scoreElement.textContent = "Score: " + score;
     }
-
-    /* Aktualisiert die Trade-Richtungsanzeige */
+  
+    /* Aktualisiere die Trade-Richtungsanzeige */
     function updateTradeDirection(asset, tile) {
       const directionContainer = tile.querySelector(".trade-direction");
       if (asset.priceHistory.length > 1) {
@@ -348,8 +444,8 @@
       }
       feather.replace();
     }
-
-    /* Aktualisiert die zusätzlichen Trade-Infos */
+  
+    /* Aktualisiere die zusätzlichen Trade-Infos */
     function updateTradeInfo(asset, tile) {
       tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
       tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
@@ -358,16 +454,20 @@
       // Berechne CRV: (TP1 - Entry) / (Entry - SL)
       const crv = (asset.tp1 - asset.entryPrice) / (asset.entryPrice - asset.sl);
       tile.querySelector(".crv").textContent = crv.toFixed(2);
-      tile.querySelector(".change24h").textContent = (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
-      tile.querySelector(".change1h").textContent = (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
+      tile.querySelector(".change24h").textContent =
+        (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
+      tile.querySelector(".change1h").textContent =
+        (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
     }
-
+  
     /* Alarm-Check unter CRV-Bedingung */
     function checkAlarm(asset) {
       const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
-      if (!asset.alarmTriggered &&
-          asset.currentPrice >= asset.entryPrice &&
-          asset.currentPrice < threshold) {
+      if (
+        !asset.alarmTriggered &&
+        asset.currentPrice >= asset.entryPrice &&
+        asset.currentPrice < threshold
+      ) {
         asset.alarmTriggered = true;
         if (alarmEnabled) {
           document.getElementById("alarmAudio").play();
@@ -380,7 +480,7 @@
         }
       }
     }
-
+  
     /* Aktualisiert eine einzelne Kachel */
     function updateTile(asset, index) {
       const tile = document.getElementById("asset-" + index);
@@ -392,7 +492,7 @@
       updateTradeInfo(asset, tile);
       checkAlarm(asset);
     }
-
+  
     /* Simuliert Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzen) */
     function updatePrices() {
       assets.forEach((asset, index) => {
@@ -402,13 +502,13 @@
         if (asset.priceHistory.length > 5) {
           asset.priceHistory.shift();
         }
-        // Simuliere zufällige Werte für 24h- und 1h-Änderung
+        // Simuliere zufällige Werte für 24h- und 1h-Veränderung
         asset.change24h = (Math.random() * 20 - 10).toFixed(2);
         asset.change1h = (Math.random() * 4 - 2).toFixed(2);
         updateTile(asset, index);
       });
     }
-
+  
     /* Überwachung starten/stoppen */
     document.getElementById("toggleMonitoring").addEventListener("click", () => {
       monitoringActive = !monitoringActive;
@@ -423,7 +523,7 @@
         clearInterval(simulationInterval);
       }
     });
-
+  
     /* Initiale Generierung der Asset-Kacheln */
     generateAssetTiles();
   </script>
