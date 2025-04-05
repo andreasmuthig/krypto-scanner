@@ -181,6 +181,27 @@
       return html;
     }
 
+    // Berechnet den EMA für ein Array von Werten
+    function computeEMA(values, period) {
+      const k = 2 / (period + 1);
+      let ema = values[0];
+      for (let i = 1; i < values.length; i++) {
+        ema = values[i] * k + ema * (1 - k);
+      }
+      return ema;
+    }
+
+    // Berechnet den MACD (EMA12 - EMA26) anhand der Schlusskurse
+    async function fetchMACD(symbol) {
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
+      const klines = await response.json();
+      const closes = klines.map(kline => parseFloat(kline[4]));
+      if (closes.length < 26) return null;
+      const ema12 = computeEMA(closes, 12);
+      const ema26 = computeEMA(closes, 26);
+      return ema12 - ema26;
+    }
+
     // calculateEntry verwendet nun die global verfügbare fetchRSI
     async function calculateEntry(symbol, data) {
       async function fetchSupportLevel(symbol) {
@@ -207,7 +228,6 @@
       const supportLevel = await fetchSupportLevel(symbol);
       const atr = await fetchATR(symbol);
       const rsi = await fetchRSI(symbol);
-
       let entry = supportLevel;
       // Wenn der Markt überverkauft ist (RSI < 30), wähle den niedrigeren Wert zwischen supportLevel und data.price minus ATR
       if (rsi < 30) {
@@ -216,6 +236,7 @@
       return entry;
     }
 
+    // updateTiles integriert nun auch den MACD in die Score-Berechnung
     async function updateTiles() {
       const tiles = document.querySelectorAll(".asset-tile");
       for (let i = 0; i < watchlist.length; i++) {
@@ -226,7 +247,17 @@
         const tp2 = entry * 1.03;
         const sl = entry * 0.985;
         const crvRaw = (tp1 - entry) / (entry - sl);
-        const crv = crvRaw.toFixed(2);
+
+        // Hole den MACD und integriere diesen in den Score
+        const macd = await fetchMACD(symbol);
+        let macdScore = 0;
+        let macdDisplay = "n/a";
+        if (macd !== null) {
+          macdScore = macd > 0 ? 1 : (macd < 0 ? -1 : 0);
+          const macdColor = macd > 0 ? "#28a745" : (macd < 0 ? "#dc3545" : "#cccccc");
+          macdDisplay = `<span style="color: ${macdColor}; font-weight: bold;">${macd.toFixed(2)}</span>`;
+        }
+        const scoreValue = Math.round(crvRaw * 10 + macdScore);
 
         const tile = tiles[i];
         tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
@@ -234,10 +265,10 @@
         tile.querySelector(".tp1").textContent = tp1.toFixed(2);
         tile.querySelector(".tp2").textContent = tp2.toFixed(2);
         tile.querySelector(".sl").textContent = sl.toFixed(2);
-        tile.querySelector(".crv").textContent = crv;
+        tile.querySelector(".crv").textContent = crv.toFixed(2);
+        tile.querySelector(".score").innerHTML = `Score: ${scoreValue} (MACD: ${macdDisplay})`;
         tile.querySelector(".rsi-value").textContent = (await fetchRSI(symbol)).toFixed(0);
         tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(await fetchRSI(symbol));
-        tile.querySelector(".score").textContent = `Score: ${Math.round(crvRaw * 10)}`;
 
         const directionEl = tile.querySelector(".trade-direction");
         if (data.price > entry) {
