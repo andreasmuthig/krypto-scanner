@@ -37,7 +37,7 @@
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 20px;
     }
-    /* Asset-Kacheln: Hintergrundfarbe und Schatten angepasst */
+    /* Asset-Kacheln: Hintergrundfarbe und Schatten */
     .asset-tile {
       background-color: rgba(105, 93, 79, 0.9);
       padding: 15px;
@@ -80,10 +80,10 @@
       transition: background-color 0.3s;
     }
     .segment.active {
-      background-color: #0f0;
+      background-color: #88bb88;
     }
     .segment.final {
-      background-color: blue;
+      background-color: #88aaff;
     }
     /* Trade-Infos als Grid (2 Reihen, 4 Spalten) */
     .trade-info {
@@ -97,12 +97,12 @@
     .trade-info div {
       padding: 2px;
     }
-    /* RSI LED-Streifen */
+    /* RSI LED-Streifen als inline-flex */
     .rsi-led-bar {
-      display: flex;
+      display: inline-flex;
       gap: 2px;
-      justify-content: center;
-      margin-top: 4px;
+      vertical-align: middle;
+      margin-left: 4px;
     }
     .rsi-segment {
       width: 10px;
@@ -309,7 +309,7 @@
             <div>1h: <span class="change1h">0.00%</span></div>
             <div>
               RSI: <span class="rsi-value">50</span>
-              <div class="rsi-led-bar"></div>
+              <span class="rsi-led-bar"></span>
             </div>
           </div>
         `;
@@ -410,11 +410,11 @@
       const rsiBar = tile.querySelector(".rsi-led-bar");
       const segmentsCount = 8;
       const activeSegments = Math.floor(asset.rsi / (100 / segmentsCount));
-      let activeColor = "green";
+      let activeColor = "#88bb88"; // Standard: entsättigtes Grün
       if (asset.rsi < 30) {
-        activeColor = "blue";
+        activeColor = "#6699cc"; // entsättigtes Blau
       } else if (asset.rsi > 70) {
-        activeColor = "red";
+        activeColor = "#cc6666"; // entsättigtes Rot
       }
       let html = "";
       for (let i = 0; i < segmentsCount; i++) {
