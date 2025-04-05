@@ -268,9 +268,16 @@ let countdown = 30;
     const crv = ((tp1 - entry) / (entry - sl)).toFixed(2);
 
     tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
-    
+    tile.querySelector(".entry-price").textContent = entry.toFixed(2);
+    tile.querySelector(".tp1").textContent = tp1.toFixed(2);
+    tile.querySelector(".tp2").textContent = tp2.toFixed(2);
+    tile.querySelector(".sl").textContent = sl.toFixed(2);
+    tile.querySelector(".crv").textContent = crv;
+    tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
+    tile.querySelector(".rsi-value").textContent = rsi.toFixed(0);
+    tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
 
-    // LED Balken für Annäherung an Einstieg
+    // LED-Balken zur Einstiegserkennung
     const ledSegments = tile.querySelectorAll(".segment");
     const progress = Math.min(1, Math.max(0, (data.price - (entry - 0.01)) / (entry * 0.01)));
     const ledsToLight = Math.floor(progress * ledSegments.length);
@@ -284,7 +291,7 @@ let countdown = 30;
       }
     });
 
-    // Audio-Alarm wenn Einstieg erreicht
+    // Audio-/Sprachalarm bei Annäherung
     const alarmThreshold = entry + (tp1 - entry) * 0.8;
     if (!tile.dataset.alarm && data.price >= entry && data.price < alarmThreshold) {
       tile.dataset.alarm = "true";
@@ -299,8 +306,8 @@ let countdown = 30;
         window.speechSynthesis.speak(utterance);
       }
     }
-  }
-}`;
+
+    
         
       }
     }
