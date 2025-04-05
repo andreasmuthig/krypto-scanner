@@ -99,6 +99,7 @@
     .rsi-container {
       flex-direction: column;
       align-items: flex-start;
+      display: flex;
     }
     .rsi-label {
       margin-right: 5px;
@@ -128,5 +129,88 @@
   <div class="asset-grid" id="assetGrid"></div>
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
   <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    feather.replace();
+    const assetGrid = document.getElementById("assetGrid");
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT"];
+
+    async function fetchRSI(symbol) {
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
+      const klines = await response.json();
+      let gains = 0, losses = 0;
+      for (let i = 1; i < klines.length; i++) {
+        const prevClose = parseFloat(klines[i - 1][4]);
+        const close = parseFloat(klines[i][4]);
+        const diff = close - prevClose;
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      const avgGain = gains / 14;
+      const avgLoss = losses / 14;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
+
+    async function fetchData(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+      const data = await res.json();
+      return {
+        symbol: symbol,
+        price: parseFloat(data.lastPrice),
+        change1h: 0, // Platzhalter
+        change24h: parseFloat(data.priceChangePercent),
+      };
+    }
+
+    function createRSILedBar(rsi) {
+      let html = "";
+      const segments = 8;
+      const active = Math.floor((rsi / 100) * segments);
+      let color = "#88bb88";
+      if (rsi < 30) color = "#6699cc";
+      else if (rsi > 70) color = "#cc6666";
+      for (let i = 0; i < segments; i++) {
+        html += `<div class="rsi-segment" style="background-color: ${i < active ? color : "#444"};"></div>`;
+      }
+      return html;
+    }
+
+    async function buildTiles() {
+      assetGrid.innerHTML = "";
+      for (const symbol of watchlist) {
+        const data = await fetchData(symbol);
+        const rsi = await fetchRSI(symbol);
+        const displayName = symbol.replace("USDT", "");
+        const tile = document.createElement("div");
+        tile.className = "asset-tile";
+        tile.innerHTML = `
+          <h2>${displayName}</h2>
+          <div class="price">Preis: ${data.price.toFixed(2)}</div>
+          <div class="price-change">24h: ${data.change24h.toFixed(2)}%</div>
+          <div class="score">Score: 0</div>
+          <div class="trade-direction"><i data-feather="minus"></i> Neutral</div>
+          <div class="led-bar">${'<div class="segment"></div>'.repeat(8)}</div>
+          <div class="trade-info">
+            <div class="trade-item">Einstieg: <span class="entry-price">-</span></div>
+            <div class="trade-item">TP1: <span class="tp1">-</span></div>
+            <div class="trade-item">TP2: <span class="tp2">-</span></div>
+            <div class="trade-item">SL: <span class="sl">-</span></div>
+            <div class="trade-item">CRV: <span class="crv">-</span></div>
+            <div class="trade-item">24h: <span class="change24h">${data.change24h.toFixed(2)}%</span></div>
+            <div class="trade-item">1h: <span class="change1h">-</span></div>
+            <div class="trade-item rsi-container">
+              <span class="rsi-label">RSI:</span>
+              <span class="rsi-value">${rsi.toFixed(0)}</span>
+              <span class="rsi-led-bar">${createRSILedBar(rsi)}</span>
+            </div>
+          </div>
+        `;
+        assetGrid.appendChild(tile);
+      }
+      feather.replace();
+    }
+
+    buildTiles();
+  </script>
 </body>
 </html>
