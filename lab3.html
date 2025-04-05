@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crypto Monitor</title>
   <style>
-    /* Dark Mode Styles */
+    /* Dark Mode und Grundlayout */
     body {
       background-color: #121212;
       color: #e0e0e0;
@@ -21,7 +21,7 @@
       font-size: 24px;
       margin: 0;
     }
-    /* Toggle Button */
+    /* Toggle Button für Überwachung */
     #toggleMonitoring {
       display: block;
       margin: 0 auto 20px;
@@ -55,17 +55,11 @@
       font-size: 16px;
       margin-bottom: 5px;
     }
-    .price-change {
-      font-size: 14px;
-      margin-bottom: 5px;
-    }
-    .score {
+    .price-change, .score, .trade-direction {
       font-size: 14px;
       margin-bottom: 5px;
     }
     .trade-direction {
-      font-size: 14px;
-      margin-bottom: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -94,15 +88,73 @@
     .segment.final {
       background-color: blue;
     }
+    /* Menüleiste */
+    .menu-toggle {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 10px;
+      background-color: #444;
+      border: none;
+      border-radius: 5px;
+      color: #e0e0e0;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .side-menu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 150px;
+      background-color: #1e1e1e;
+      padding: 10px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+      z-index: 999;
+    }
+    .side-menu.active {
+      transform: translateY(0);
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .menu-item i {
+      margin-right: 8px;
+    }
+    /* Glüh-Effekt: aktiv = grün, inaktiv = rot */
+    .menu-item.active {
+      box-shadow: 0 0 8px 2px green;
+    }
+    .menu-item.inactive {
+      box-shadow: 0 0 8px 2px red;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Menü: Toggle-Button und ausfahrende Leiste -->
+  <button id="menuToggle" class="menu-toggle">Menu</button>
+  <div id="sideMenu" class="side-menu">
+    <div class="menu-item active" id="toggleAlarm">
+      <i data-feather="bell"></i>
+      <span>Alarm</span>
+    </div>
+    <div class="menu-item active" id="toggleSpeech">
+      <i data-feather="mic"></i>
+      <span>Sprachausgabe</span>
+    </div>
+  </div>
 
   <header>
     <h1>Crypto Monitor</h1>
   </header>
 
-  <!-- Toggle Button -->
+  <!-- Toggle für die Asset-Überwachung -->
   <button id="toggleMonitoring">Überwachung starten</button>
 
   <!-- Asset Grid -->
@@ -117,7 +169,13 @@
   <script src="https://unpkg.com/feather-icons"></script>
 
   <script>
-    // Definition der Assets mit zusätzlichen Properties für Anzeige und Sprachausgabe
+    // Globale Schalter
+    let alarmEnabled = true;
+    let speechEnabled = true;
+    // CRV-Schwellenwert: 80 % des Weges von Entry bis TP1
+    const crvThreshold = 0.8;
+
+    // Assets: Anzeige (displayName) und Sprachausgabe (fullName)
     const assets = [
       { 
         name: "BTCUSDT", 
@@ -125,6 +183,7 @@
         fullName: "Bitcoin", 
         currentPrice: 49000, 
         entryPrice: 50000, 
+        tp1: 50500,
         margin: 1000, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -136,6 +195,7 @@
         fullName: "Ethereum", 
         currentPrice: 3200, 
         entryPrice: 3300, 
+        tp1: 3350,
         margin: 100, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -147,6 +207,7 @@
         fullName: "Solana", 
         currentPrice: 100, 
         entryPrice: 110, 
+        tp1: 112,
         margin: 10, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -158,6 +219,7 @@
         fullName: "Ripple", 
         currentPrice: 0.9, 
         entryPrice: 1.0, 
+        tp1: 1.05,
         margin: 0.1, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -169,6 +231,7 @@
         fullName: "Cardano", 
         currentPrice: 1.2, 
         entryPrice: 1.3, 
+        tp1: 1.35,
         margin: 0.1, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -180,6 +243,7 @@
         fullName: "Polkadot", 
         currentPrice: 20, 
         entryPrice: 22, 
+        tp1: 23,
         margin: 2, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -191,6 +255,7 @@
         fullName: "Chainlink", 
         currentPrice: 7, 
         entryPrice: 7.5, 
+        tp1: 7.8,
         margin: 0.5, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -202,6 +267,7 @@
         fullName: "Avalanche", 
         currentPrice: 15, 
         entryPrice: 16, 
+        tp1: 16.5,
         margin: 1, 
         alarmTriggered: false, 
         priceHistory: [], 
@@ -213,7 +279,7 @@
     let simulationInterval;
     const assetGrid = document.getElementById('assetGrid');
 
-    // Generiere die Asset-Kacheln unter Verwendung von displayName
+    // Erstelle die Asset-Kacheln (mit displayName)
     function generateAssetTiles() {
       assetGrid.innerHTML = "";
       assets.forEach((asset, index) => {
@@ -237,7 +303,7 @@
       feather.replace();
     }
 
-    // Aktualisierung des LED-Balkens
+    // Aktualisiere den LED-Balken
     function updateLedBar(asset, tile) {
       const ledBar = tile.querySelector('.led-bar');
       const segments = ledBar.querySelectorAll('.segment');
@@ -248,7 +314,6 @@
         seg.classList.remove('active', 'final');
         if (index < segmentsToLight) {
           seg.classList.add('active');
-          // Letztes Segment blau, wenn 100% erreicht
           if (index === segments.length - 1 && progress === 1) {
             seg.classList.add('final');
           }
@@ -256,13 +321,13 @@
       });
     }
 
-    // Aktualisierung des Preis-Displays
+    // Aktualisiere die Preis-Anzeige
     function updatePriceDisplay(asset, tile) {
       const priceDiv = tile.querySelector('.price');
       priceDiv.textContent = 'Preis: ' + asset.currentPrice.toFixed(2);
     }
 
-    // Aktualisierung der Preisveränderung in %
+    // Aktualisiere die prozentuale Preisveränderung
     function updatePriceChange(asset, tile) {
       const priceChangeDiv = tile.querySelector('.price-change');
       if (asset.priceHistory.length > 1) {
@@ -275,7 +340,7 @@
       }
     }
 
-    // Aktualisierung des Scores (einfach basierend auf dem Fortschritt)
+    // Aktualisiere den Score (einfach basierend auf dem Fortschritt)
     function updateScoreDisplay(asset, tile) {
       const scoreElement = tile.querySelector('.score');
       let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
@@ -284,7 +349,7 @@
       scoreElement.textContent = 'Score: ' + score;
     }
 
-    // Aktualisierung der Trade-Richtungsanzeige mit Feather Icons
+    // Aktualisiere die Trade-Richtungsanzeige
     function updateTradeDirection(asset, tile) {
       const directionContainer = tile.querySelector('.trade-direction');
       if (asset.priceHistory.length > 1) {
@@ -307,22 +372,27 @@
       feather.replace();
     }
 
-    // Überprüfung und Auslösung des Audioalarms mit Sprachausgabe
+    // Alarm-Check unter Verwendung des CRV-Schwellenwerts
     function checkAlarm(asset) {
-      if (!asset.alarmTriggered && asset.currentPrice >= asset.entryPrice) {
+      // Berechne den Schwellenwert: entryPrice + (TP1 - entryPrice) * crvThreshold
+      const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
+      if (!asset.alarmTriggered &&
+          asset.currentPrice >= asset.entryPrice &&
+          asset.currentPrice < threshold) {
         asset.alarmTriggered = true;
-        document.getElementById('alarmAudio').play();
-        // Sprachausgabe: Asset voll ausgeschrieben und detaillierte Ansage
-        if ('speechSynthesis' in window) {
+        if (alarmEnabled) {
+          document.getElementById('alarmAudio').play();
+        }
+        if (speechEnabled && 'speechSynthesis' in window) {
           const utterance = new SpeechSynthesisUtterance(asset.fullName + " erreicht den Einstiegspreis");
           window.speechSynthesis.speak(utterance);
-        } else {
+        } else if (!speechEnabled) {
           console.log(asset.fullName + " erreicht den Einstiegspreis");
         }
       }
     }
 
-    // Aktualisierung einer einzelnen Kachel
+    // Aktualisiere eine einzelne Kachel
     function updateTile(asset, index) {
       const tile = document.getElementById('asset-' + index);
       updatePriceDisplay(asset, tile);
@@ -346,7 +416,7 @@
       });
     }
 
-    // Toggle-Funktion für die Überwachung
+    // Toggle der Überwachung
     document.getElementById('toggleMonitoring').addEventListener('click', () => {
       monitoringActive = !monitoringActive;
       const btn = document.getElementById('toggleMonitoring');
@@ -359,6 +429,24 @@
         btn.classList.remove('active');
         clearInterval(simulationInterval);
       }
+    });
+
+    // Menüleiste – Ein- und Ausblenden
+    document.getElementById('menuToggle').addEventListener('click', function(){
+      document.getElementById('sideMenu').classList.toggle('active');
+    });
+
+    // Umschalten der Alarm-Funktion
+    document.getElementById('toggleAlarm').addEventListener('click', function(){
+      alarmEnabled = !alarmEnabled;
+      this.classList.toggle('active', alarmEnabled);
+      this.classList.toggle('inactive', !alarmEnabled);
+    });
+    // Umschalten der Sprachausgabe
+    document.getElementById('toggleSpeech').addEventListener('click', function(){
+      speechEnabled = !speechEnabled;
+      this.classList.toggle('active', speechEnabled);
+      this.classList.toggle('inactive', !speechEnabled);
     });
 
     // Initiale Generierung der Asset-Kacheln
