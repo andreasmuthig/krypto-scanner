@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Seite – Sliding Navigation</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    /* Navigation: von oben hereinsliden */
+    #navMenu {
+      position: fixed;
+      top: -70px; /* Start außerhalb des Viewports */
+      left: 0;
+      width: 100%;
+      height: 70px;
+      background: rgba(40, 40, 40, 0.95);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: top 0.5s ease;
+      z-index: 1000;
+    }
+    /* Klasse für sichtbare Navigation */
+    #navMenu.visible {
+      top: 0;
+    }
+    #navMenu .menu-item {
+      margin: 0 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 16px;
+    }
+    #navMenu .menu-item a {
+      color: inherit;
+      text-decoration: none;
+    }
+    #navMenu .menu-item:hover {
+      color: #66bb6a; /* entsättigtes Grün */
+    }
+    /* Button zum Umschalten der Navigation */
+    #menuToggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1100;
+      background-color: #444;
+      border: none;
+      border-radius: 5px;
+      padding: 10px;
+      color: #e0e0e0;
+      cursor: pointer;
+    }
+    /* Demo-Seiteninhalt */
+    .content {
+      margin-top: 100px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <button id="menuToggle">
+    <i data-feather="menu"></i>
+  </button>
+  <nav id="navMenu">
+    <div class="menu-item">
+      <a href="index.html">
+        <i data-feather="home"></i>
+        <span>Home</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a href="dashboard.html">
+        <i data-feather="activity"></i>
+        <span>Dashboard</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a href="settings.html">
+        <i data-feather="settings"></i>
+        <span>Einstellungen</span>
+      </a>
+    </div>
+    <div class="menu-item">
+      <a href="notifications.html">
+        <i data-feather="bell"></i>
+        <span>Benachrichtigungen</span>
+      </a>
+    </div>
+  </nav>
+  
+  <div class="content">
+    <h1>Demo Seite</h1>
+    <p>Dies ist eine Demo Seite, bei der die Navigation von oben hereinslidet und stilvoll mit Feather Icons dargestellt wird. Im Hintergrund können weitere Funktionen implementiert werden.</p>
+  </div>
+  
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    // Initialisiere Feather Icons
+    feather.replace();
+
+    const menuToggle = document.getElementById("menuToggle");
+    const navMenu = document.getElementById("navMenu");
+
+    // Umschalten der Sichtbarkeit der Navigation
+    menuToggle.addEventListener("click", () => {
+      navMenu.classList.toggle("visible");
+    });
+  </script>
+</body>
+</html>
