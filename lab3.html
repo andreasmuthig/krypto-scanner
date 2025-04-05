@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Monitor</title>
+  <title>Crypto Monitor – Echtzeitdaten mit RSI</title>
   <style>
-    /* Grundlegender Dark Mode */
     body {
       background-color: #121212;
       color: #e0e0e0;
@@ -13,7 +12,6 @@
       margin: 0;
       padding: 20px;
     }
-    /* Container für die drei Steuerungs-Buttons */
     #controls {
       display: flex;
       gap: 10px;
@@ -31,19 +29,18 @@
     #controls button.active {
       background-color: #28a745;
     }
-    /* Asset Grid */
     .asset-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
       gap: 20px;
     }
-    /* Asset-Kacheln: Hintergrundfarbe angepasst */
     .asset-tile {
-      background-color: #968672;
+      background-color: rgba(105, 93, 79, 0.9);
       padding: 15px;
       border-radius: 8px;
       text-align: center;
       font-size: 14px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
     .asset-tile h2 {
       font-size: 18px;
@@ -79,436 +76,57 @@
       transition: background-color 0.3s;
     }
     .segment.active {
-      background-color: #0f0;
+      background-color: #88bb88;
     }
     .segment.final {
-      background-color: blue;
+      background-color: #88aaff;
     }
-    /* Trade-Infos als Grid: 4 Spalten, 2 Reihen (8 Felder) */
     .trade-info {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: repeat(4, auto);
       gap: 4px;
       margin-top: 10px;
       font-size: 12px;
       text-align: left;
     }
-    .trade-info div {
-      /* Kleiner Abstand, evtl. zentrieren */
+    .trade-item {
       padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
     }
-    /* Für den RSI-Eintrag */
-    .rsi-led {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-left: 4px;
+    .rsi-container {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .rsi-label {
+      margin-right: 5px;
+    }
+    .rsi-value {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .rsi-led-bar {
+      display: flex;
+      gap: 2px;
+    }
+    .rsi-segment {
+      width: 12px;
+      height: 6px;
+      background-color: #444;
+      border-radius: 2px;
     }
   </style>
 </head>
 <body>
-  <!-- Steuerungs-Buttons (oben) -->
   <div id="controls">
     <button id="toggleMonitoring">Überwachung starten</button>
     <button id="toggleAlarmBtn" class="active">Alarm: aktiv</button>
     <button id="toggleSpeechBtn" class="active">Sprachausgabe: aktiv</button>
   </div>
-  
-  <!-- Asset Grid -->
-  <div class="asset-grid" id="assetGrid">
-    <!-- Kacheln werden per JavaScript generiert -->
-  </div>
-
-  <!-- Audioalarm -->
+  <div class="asset-grid" id="assetGrid"></div>
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
-
-  <!-- Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
-
-  <script>
-    /* Globale Schalter */
-    let alarmEnabled = true;
-    let speechEnabled = true;
-    let monitoringActive = false;
-    let simulationInterval;
-    
-    /* CRV-Schwellenwert: z. B. 80 % des Weges von Entry bis TP1 */
-    const crvThreshold = 0.8;
-    
-    /* Asset-Daten – erweitert um zusätzliche Trade-Infos und einen RSI-Wert */
-    const assets = [
-      { 
-        name: "BTCUSDT", 
-        displayName: "BTC", 
-        fullName: "Bitcoin", 
-        currentPrice: 49000, 
-        entryPrice: 50000, 
-        tp1: 51000,
-        tp2: 52000,
-        sl: 49500,
-        margin: 1000, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "ETHUSDT", 
-        displayName: "ETH", 
-        fullName: "Ethereum", 
-        currentPrice: 3200, 
-        entryPrice: 3300, 
-        tp1: 3400,
-        tp2: 3500,
-        sl: 3200,
-        margin: 100, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "SOLUSDT", 
-        displayName: "SOL", 
-        fullName: "Solana", 
-        currentPrice: 100, 
-        entryPrice: 110, 
-        tp1: 120,
-        tp2: 130,
-        sl: 105,
-        margin: 10, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "XRPUSDT", 
-        displayName: "XRP", 
-        fullName: "Ripple", 
-        currentPrice: 0.9, 
-        entryPrice: 1.0, 
-        tp1: 1.2,
-        tp2: 1.3,
-        sl: 0.9,
-        margin: 0.1, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "ADAUSDT", 
-        displayName: "ADA", 
-        fullName: "Cardano", 
-        currentPrice: 1.2, 
-        entryPrice: 1.3, 
-        tp1: 1.5,
-        tp2: 1.6,
-        sl: 1.2,
-        margin: 0.1, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "DOTUSDT", 
-        displayName: "DOT", 
-        fullName: "Polkadot", 
-        currentPrice: 20, 
-        entryPrice: 22, 
-        tp1: 24,
-        tp2: 25,
-        sl: 21,
-        margin: 2, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "LINKUSDT", 
-        displayName: "LINK", 
-        fullName: "Chainlink", 
-        currentPrice: 7, 
-        entryPrice: 7.5, 
-        tp1: 8,
-        tp2: 8.5,
-        sl: 7,
-        margin: 0.5, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      },
-      { 
-        name: "AVAXUSDT", 
-        displayName: "AVAX", 
-        fullName: "Avalanche", 
-        currentPrice: 15, 
-        entryPrice: 16, 
-        tp1: 17,
-        tp2: 18,
-        sl: 15,
-        margin: 1, 
-        alarmTriggered: false, 
-        priceHistory: [],
-        tradeDirection: "neutral",
-        change24h: 0,
-        change1h: 0,
-        rsi: 50
-      }
-    ];
-    
-    const assetGrid = document.getElementById("assetGrid");
-    
-    /* Generiere die Asset-Kacheln inkl. zusätzlicher Infos */
-    function generateAssetTiles() {
-      assetGrid.innerHTML = "";
-      assets.forEach((asset, index) => {
-        const tile = document.createElement("div");
-        tile.className = "asset-tile";
-        tile.id = "asset-" + index;
-        tile.innerHTML = `
-          <h2>${asset.displayName}</h2>
-          <div class="price">Preis: ${asset.currentPrice.toFixed(2)}</div>
-          <div class="price-change">0.00%</div>
-          <div class="score">Score: 0</div>
-          <div class="trade-direction">
-            <i data-feather="arrow-up"></i> Long
-          </div>
-          <div class="led-bar">
-            ${'<div class="segment"></div>'.repeat(8)}
-          </div>
-          <div class="trade-info">
-            <div>Einstieg: <span class="entry-price">${asset.entryPrice.toFixed(2)}</span></div>
-            <div>TP1: <span class="tp1">${asset.tp1.toFixed(2)}</span></div>
-            <div>TP2: <span class="tp2">${asset.tp2.toFixed(2)}</span></div>
-            <div>SL: <span class="sl">${asset.sl.toFixed(2)}</span></div>
-            <div>CRV: <span class="crv">-</span></div>
-            <div>24h: <span class="change24h">0.00%</span></div>
-            <div>1h: <span class="change1h">0.00%</span></div>
-            <div>RSI: <span class="rsi-value">50</span>
-              <span class="rsi-led"></span>
-            </div>
-          </div>
-        `;
-        assetGrid.appendChild(tile);
-      });
-      feather.replace();
-    }
-    
-    /* Aktualisiere den LED-Balken */
-    function updateLedBar(asset, tile) {
-      const ledBar = tile.querySelector(".led-bar");
-      const segments = ledBar.querySelectorAll(".segment");
-      let progress =
-        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
-      progress = Math.max(0, Math.min(progress, 1));
-      const segmentsToLight = Math.floor(progress * segments.length);
-      segments.forEach((seg, index) => {
-        seg.classList.remove("active", "final");
-        if (index < segmentsToLight) {
-          seg.classList.add("active");
-          if (index === segments.length - 1 && progress === 1) {
-            seg.classList.add("final");
-          }
-        }
-      });
-    }
-    
-    /* Aktualisiere die Preis-Anzeige */
-    function updatePriceDisplay(asset, tile) {
-      const priceDiv = tile.querySelector(".price");
-      priceDiv.textContent = "Preis: " + asset.currentPrice.toFixed(2);
-    }
-    
-    /* Aktualisiere die prozentuale Preisveränderung */
-    function updatePriceChange(asset, tile) {
-      const priceChangeDiv = tile.querySelector(".price-change");
-      if (asset.priceHistory.length > 1) {
-        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
-        const change = ((asset.currentPrice - prevPrice) / prevPrice) * 100;
-        const sign = change >= 0 ? "+" : "";
-        priceChangeDiv.textContent = sign + change.toFixed(2) + "%";
-      } else {
-        priceChangeDiv.textContent = "0.00%";
-      }
-    }
-    
-    /* Aktualisiere den Score (basierend auf Fortschritt) */
-    function updateScoreDisplay(asset, tile) {
-      const scoreElement = tile.querySelector(".score");
-      let progress =
-        (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
-      progress = Math.max(0, Math.min(progress, 1));
-      const score = Math.floor(progress * 100);
-      scoreElement.textContent = "Score: " + score;
-    }
-    
-    /* Aktualisiere die Trade-Richtungsanzeige */
-    function updateTradeDirection(asset, tile) {
-      const directionContainer = tile.querySelector(".trade-direction");
-      if (asset.priceHistory.length > 1) {
-        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
-        if (asset.currentPrice > prevPrice) {
-          asset.tradeDirection = "long";
-        } else if (asset.currentPrice < prevPrice) {
-          asset.tradeDirection = "short";
-        } else {
-          asset.tradeDirection = "neutral";
-        }
-      }
-      if (asset.tradeDirection === "long") {
-        directionContainer.innerHTML = '<i data-feather="arrow-up"></i> Long';
-      } else if (asset.tradeDirection === "short") {
-        directionContainer.innerHTML = '<i data-feather="arrow-down"></i> Short';
-      } else {
-        directionContainer.innerHTML = "Neutral";
-      }
-      feather.replace();
-    }
-    
-    /* Aktualisiere die zusätzlichen Trade-Infos in einem 4-Spalten-Grid */
-    function updateTradeInfo(asset, tile) {
-      tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
-      tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
-      tile.querySelector(".tp2").textContent = asset.tp2.toFixed(2);
-      tile.querySelector(".sl").textContent = asset.sl.toFixed(2);
-      // Berechne CRV: (TP1 - Entry) / (Entry - SL)
-      const crv = (asset.tp1 - asset.entryPrice) / (asset.entryPrice - asset.sl);
-      tile.querySelector(".crv").textContent = crv.toFixed(2);
-      tile.querySelector(".change24h").textContent =
-        (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
-      tile.querySelector(".change1h").textContent =
-        (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
-      // RSI aktualisieren: Zeige den numerischen Wert und einen LED-Indikator
-      tile.querySelector(".rsi-value").textContent = asset.rsi.toFixed(0);
-      const rsiLed = tile.querySelector(".rsi-led");
-      if (asset.rsi > 70) {
-        rsiLed.style.backgroundColor = "red";
-      } else if (asset.rsi < 30) {
-        rsiLed.style.backgroundColor = "blue";
-      } else {
-        rsiLed.style.backgroundColor = "green";
-      }
-      rsiLed.style.display = "inline-block";
-      rsiLed.style.width = "10px";
-      rsiLed.style.height = "10px";
-      rsiLed.style.borderRadius = "50%";
-      rsiLed.style.marginLeft = "4px";
-    }
-    
-    /* Alarm-Check unter CRV-Bedingung */
-    function checkAlarm(asset) {
-      const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
-      if (
-        !asset.alarmTriggered &&
-        asset.currentPrice >= asset.entryPrice &&
-        asset.currentPrice < threshold
-      ) {
-        asset.alarmTriggered = true;
-        if (alarmEnabled) {
-          document.getElementById("alarmAudio").play();
-        }
-        if (speechEnabled && "speechSynthesis" in window) {
-          const utterance = new SpeechSynthesisUtterance(
-            asset.fullName + " erreicht den Einstiegspreis"
-          );
-          window.speechSynthesis.speak(utterance);
-        } else if (!speechEnabled) {
-          console.log(asset.fullName + " erreicht den Einstiegspreis");
-        }
-      }
-    }
-    
-    /* Aktualisiert eine einzelne Kachel */
-    function updateTile(asset, index) {
-      const tile = document.getElementById("asset-" + index);
-      updatePriceDisplay(asset, tile);
-      updatePriceChange(asset, tile);
-      updateLedBar(asset, tile);
-      updateScoreDisplay(asset, tile);
-      updateTradeDirection(asset, tile);
-      updateTradeInfo(asset, tile);
-      checkAlarm(asset);
-    }
-    
-    /* Simuliert Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzen) */
-    function updatePrices() {
-      assets.forEach((asset, index) => {
-        const change = Math.random() * 10 - 5;
-        asset.currentPrice += change;
-        asset.priceHistory.push(asset.currentPrice);
-        if (asset.priceHistory.length > 5) {
-          asset.priceHistory.shift();
-        }
-        // Simuliere zufällige Werte für 24h- und 1h-Veränderung
-        asset.change24h = (Math.random() * 20 - 10).toFixed(2);
-        asset.change1h = (Math.random() * 4 - 2).toFixed(2);
-        // Simuliere RSI-Änderung und clamp zwischen 0 und 100
-        asset.rsi = Math.max(0, Math.min(100, asset.rsi + (Math.random() * 10 - 5)));
-        updateTile(asset, index);
-      });
-    }
-    
-    /* Überwachung starten/stoppen */
-    document.getElementById("toggleMonitoring").addEventListener("click", () => {
-      monitoringActive = !monitoringActive;
-      const btn = document.getElementById("toggleMonitoring");
-      if (monitoringActive) {
-        btn.textContent = "Überwachung stoppen";
-        btn.classList.add("active");
-        simulationInterval = setInterval(updatePrices, 1000);
-      } else {
-        btn.textContent = "Überwachung starten";
-        btn.classList.remove("active");
-        clearInterval(simulationInterval);
-      }
-    });
-    
-    /* Toggle-Button für Alarm */
-    document.getElementById("toggleAlarmBtn").addEventListener("click", () => {
-      alarmEnabled = !alarmEnabled;
-      const btn = document.getElementById("toggleAlarmBtn");
-      btn.textContent = "Alarm: " + (alarmEnabled ? "aktiv" : "inaktiv");
-      if (alarmEnabled) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-    
-    /* Toggle-Button für Sprachausgabe */
-    document.getElementById("toggleSpeechBtn").addEventListener("click", () => {
-      speechEnabled = !speechEnabled;
-      const btn = document.getElementById("toggleSpeechBtn");
-      btn.textContent = "Sprachausgabe: " + (speechEnabled ? "aktiv" : "inaktiv");
-      if (speechEnabled) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
-    });
-    
-    /* Initiale Generierung der Asset-Kacheln */
-    generateAssetTiles();
-  </script>
 </body>
 </html>
