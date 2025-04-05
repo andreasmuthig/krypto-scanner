@@ -141,7 +141,7 @@
       if (monitoring) {
         btn.textContent = "Überwachung stoppen";
         btn.classList.add("active");
-        monitorInterval = setInterval(buildTiles, 30000); // alle 30 Sekunden
+        monitorInterval = setInterval(updateTiles, 30000); // alle 30 Sekunden
       } else {
         btn.textContent = "Überwachung starten";
         btn.classList.remove("active");
@@ -232,6 +232,21 @@
     }
 
     buildTiles();
+
+    async function updateTiles() {
+      const tiles = document.querySelectorAll(".asset-tile");
+      for (let i = 0; i < watchlist.length; i++) {
+        const symbol = watchlist[i];
+        const data = await fetchData(symbol);
+        const rsi = await fetchRSI(symbol);
+        const tile = tiles[i];
+        tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
+        tile.querySelector(".price-change").textContent = `24h: ${data.change24h.toFixed(2)}%`;
+        tile.querySelector(".change24h").textContent = `${data.change24h.toFixed(2)}%`;
+        tile.querySelector(".rsi-value").textContent = `${rsi.toFixed(0)}`;
+        tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(rsi);
+      }
+    }
   </script>
 </body>
 </html>
