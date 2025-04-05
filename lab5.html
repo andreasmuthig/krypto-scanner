@@ -247,6 +247,7 @@
         const tp2 = entry * 1.03;
         const sl = entry * 0.985;
         const crvRaw = (tp1 - entry) / (entry - sl);
+        const crv = crvRaw; // Hier wird die Variable "crv" definiert
 
         // Hole den MACD und integriere diesen in den Score
         const macd = await fetchMACD(symbol);
