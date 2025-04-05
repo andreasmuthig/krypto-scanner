@@ -56,7 +56,7 @@
       const volume = await fetchVolume(symbol);
       // Beispielhafte Normalisierung: Angenommen, 1000 Einheiten entsprechen 100%
       const maxVolume = 1000; // Dieser Wert muss je nach Markt und gewünschter Skalierung angepasst werden
-      let volPercent = Math.min(volume / maxVolume * 100, 100);
+      let volPercent = Math.min((volume / maxVolume) * 100, 100);
 
       document.getElementById("volumeInfo").textContent =
         `24h Volumen für ${symbol}: ${volume.toFixed(2)}`;
@@ -69,3 +69,80 @@
   </script>
 </body>
 </html>
+``` 
+
+In diesem Beispiel zeigt die Balkenanzeige (volume-bar) den prozentualen Füllstand, basierend auf einer Normalisierungsgrundlage (maxVolume). Die Füllung (volume-fill) passt ihre Breite dynamisch an, um das aktuelle Volumen optisch darzustellen. Du kannst natürlich weitere Stile und Animationen hinzufügen, um die Darstellung weiter zu verfeinern.// filepath: /Users/andreasmuthig/Desktop/kryptoanalyse 2/lab7.html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volumenanzeige</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .volume-info {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .volume-bar {
+      width: 80%;
+      margin: 20px auto;
+      background-color: #333;
+      border: 1px solid #444;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .volume-fill {
+      height: 20px;
+      background-color: #66bb6a; /* entsättigtes Grün */
+      width: 0;
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <h1>Volumenanzeige &amp; Indikatoren</h1>
+  <div class="volume-info" id="volumeInfo">Lade 24h-Volumen...</div>
+  <div class="volume-bar">
+    <div class="volume-fill" id="volumeFill"></div>
+  </div>
+  
+  <script>
+    // Abrufen des 24h-Volumens von Binance für ein Symbol (z. B. BTCUSDT)
+    async function fetchVolume(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+      const data = await res.json();
+      return parseFloat(data.volume);
+    }
+
+    async function updateVolume() {
+      const symbol = "BTCUSDT";
+      const volume = await fetchVolume(symbol);
+      // Beispielhafte Normalisierung: Angenommen, 1000 Einheiten entsprechen 100%
+      const maxVolume = 1000; // Dieser Wert muss je nach Markt und gewünschter Skalierung angepasst werden
+      let volPercent = Math.min((volume / maxVolume) * 100, 100);
+
+      document.getElementById("volumeInfo").textContent =
+        `24h Volumen für ${symbol}: ${volume.toFixed(2)}`;
+      document.getElementById("volumeFill").style.width = volPercent + "%";
+    }
+
+    updateVolume();
+    // Aktualisiere die Anzeige alle 30 Sekunden
+    setInterval(updateVolume, 30000);
+  </script>
+</body>
+</html>
+``` 
+
+In diesem Beispiel zeigt die Balkenanzeige (volume-bar) den prozentualen Füllstand, basierend auf einer Normalisierungsgrundlage (maxVolume). Die Füllung (volume-fill) passt ihre Breite dynamisch an, um das aktuelle Volumen optisch darzustellen. Du kannst natürlich weitere Stile und Animationen hinzufügen, um die Darstellung weiter zu verfeinern.
