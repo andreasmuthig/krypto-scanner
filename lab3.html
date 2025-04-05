@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crypto Monitor</title>
   <style>
     /* Grundlegender Dark Mode */
@@ -13,7 +13,7 @@
       margin: 0;
       padding: 20px;
     }
-    /* Container für die Steuerungs-Buttons */
+    /* Container für die drei Steuerungs-Buttons */
     #controls {
       display: flex;
       gap: 10px;
@@ -31,20 +31,19 @@
     #controls button.active {
       background-color: #28a745;
     }
-    /* Asset Grid mit leicht erhöhter Minimalbreite */
+    /* Asset Grid */
     .asset-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 20px;
     }
-    /* Asset-Kacheln: Hintergrundfarbe und Schatten */
+    /* Asset-Kacheln: Hintergrundfarbe angepasst */
     .asset-tile {
-      background-color: rgba(105, 93, 79, 0.9);
+      background-color: #968672;
       padding: 15px;
       border-radius: 8px;
       text-align: center;
       font-size: 14px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
     .asset-tile h2 {
       font-size: 18px;
@@ -66,7 +65,6 @@
       height: 16px;
       margin-right: 4px;
     }
-    /* LED-Balken für den Trade-Fortschritt */
     .led-bar {
       display: flex;
       gap: 4px;
@@ -81,12 +79,12 @@
       transition: background-color 0.3s;
     }
     .segment.active {
-      background-color: #88bb88; /* entsättigtes Grün */
+      background-color: #0f0;
     }
     .segment.final {
-      background-color: #88aaff; /* entsättigtes Blau */
+      background-color: blue;
     }
-    /* Trade-Infos als Grid (2 Reihen, 4 Spalten) */
+    /* Trade-Infos als Grid: 4 Spalten, 2 Reihen (8 Felder) */
     .trade-info {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -96,38 +94,21 @@
       text-align: left;
     }
     .trade-info div {
+      /* Kleiner Abstand, evtl. zentrieren */
       padding: 2px;
     }
-    /* RSI in einer eigenen Zeile, damit es nicht zu eng wird */
-    .rsi-row {
-      grid-column: 1 / 5; /* über alle 4 Spalten */
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      margin-top: 5px;
-    }
-    .rsi-label {
-      white-space: nowrap;
-    }
-    .rsi-value {
-      font-weight: bold;
-    }
-    /* RSI LED-Streifen noch kleiner */
-    .rsi-led-bar {
-      display: inline-flex;
-      gap: 1px;
-      vertical-align: middle;
-    }
-    .rsi-segment {
-      width: 5px;
-      height: 2px;
-      background-color: #444; /* inaktiv */
-      border-radius: 1px;
+    /* Für den RSI-Eintrag */
+    .rsi-led {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-left: 4px;
     }
   </style>
 </head>
 <body>
-  <!-- Steuerungs-Buttons -->
+  <!-- Steuerungs-Buttons (oben) -->
   <div id="controls">
     <button id="toggleMonitoring">Überwachung starten</button>
     <button id="toggleAlarmBtn" class="active">Alarm: aktiv</button>
@@ -144,16 +125,18 @@
 
   <!-- Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
+
   <script>
     /* Globale Schalter */
     let alarmEnabled = true;
     let speechEnabled = true;
     let monitoringActive = false;
     let simulationInterval;
+    
     /* CRV-Schwellenwert: z. B. 80 % des Weges von Entry bis TP1 */
     const crvThreshold = 0.8;
     
-    /* Asset-Daten – erweitert um zusätzliche Trade-Infos und RSI */
+    /* Asset-Daten – erweitert um zusätzliche Trade-Infos und einen RSI-Wert */
     const assets = [
       { 
         name: "BTCUSDT", 
@@ -321,11 +304,8 @@
             <div>CRV: <span class="crv">-</span></div>
             <div>24h: <span class="change24h">0.00%</span></div>
             <div>1h: <span class="change1h">0.00%</span></div>
-            <!-- RSI in eigener Zeile, über alle 4 Spalten -->
-            <div class="rsi-row">
-              <span class="rsi-label">RSI:</span>
-              <span class="rsi-value">50</span>
-              <span class="rsi-led-bar"></span>
+            <div>RSI: <span class="rsi-value">50</span>
+              <span class="rsi-led"></span>
             </div>
           </div>
         `;
@@ -372,7 +352,7 @@
       }
     }
     
-    /* Aktualisiere den Score (basierend auf dem Fortschritt) */
+    /* Aktualisiere den Score (basierend auf Fortschritt) */
     function updateScoreDisplay(asset, tile) {
       const scoreElement = tile.querySelector(".score");
       let progress =
@@ -405,42 +385,34 @@
       feather.replace();
     }
     
-    /* Aktualisiere die zusätzlichen Trade-Infos */
+    /* Aktualisiere die zusätzlichen Trade-Infos in einem 4-Spalten-Grid */
     function updateTradeInfo(asset, tile) {
       tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
       tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
       tile.querySelector(".tp2").textContent = asset.tp2.toFixed(2);
       tile.querySelector(".sl").textContent = asset.sl.toFixed(2);
+      // Berechne CRV: (TP1 - Entry) / (Entry - SL)
       const crv = (asset.tp1 - asset.entryPrice) / (asset.entryPrice - asset.sl);
       tile.querySelector(".crv").textContent = crv.toFixed(2);
       tile.querySelector(".change24h").textContent =
         (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
       tile.querySelector(".change1h").textContent =
         (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
+      // RSI aktualisieren: Zeige den numerischen Wert und einen LED-Indikator
       tile.querySelector(".rsi-value").textContent = asset.rsi.toFixed(0);
-      updateRSIBar(asset, tile);
-    }
-    
-    /* Aktualisiere den RSI LED-Streifen */
-    function updateRSIBar(asset, tile) {
-      const rsiBar = tile.querySelector(".rsi-led-bar");
-      const segmentsCount = 8;
-      const activeSegments = Math.floor(asset.rsi / (100 / segmentsCount));
-      let activeColor = "#88bb88"; // Standard: entsättigtes Grün
-      if (asset.rsi < 30) {
-        activeColor = "#6699cc"; // entsättigtes Blau
-      } else if (asset.rsi > 70) {
-        activeColor = "#cc6666"; // entsättigtes Rot
+      const rsiLed = tile.querySelector(".rsi-led");
+      if (asset.rsi > 70) {
+        rsiLed.style.backgroundColor = "red";
+      } else if (asset.rsi < 30) {
+        rsiLed.style.backgroundColor = "blue";
+      } else {
+        rsiLed.style.backgroundColor = "green";
       }
-      let html = "";
-      for (let i = 0; i < segmentsCount; i++) {
-        if (i < activeSegments) {
-          html += `<div class="rsi-segment" style="background-color: ${activeColor};"></div>`;
-        } else {
-          html += `<div class="rsi-segment"></div>`;
-        }
-      }
-      rsiBar.innerHTML = html;
+      rsiLed.style.display = "inline-block";
+      rsiLed.style.width = "10px";
+      rsiLed.style.height = "10px";
+      rsiLed.style.borderRadius = "50%";
+      rsiLed.style.marginLeft = "4px";
     }
     
     /* Alarm-Check unter CRV-Bedingung */
@@ -456,7 +428,9 @@
           document.getElementById("alarmAudio").play();
         }
         if (speechEnabled && "speechSynthesis" in window) {
-          const utterance = new SpeechSynthesisUtterance(asset.fullName + " erreicht den Einstiegspreis");
+          const utterance = new SpeechSynthesisUtterance(
+            asset.fullName + " erreicht den Einstiegspreis"
+          );
           window.speechSynthesis.speak(utterance);
         } else if (!speechEnabled) {
           console.log(asset.fullName + " erreicht den Einstiegspreis");
@@ -476,7 +450,7 @@
       checkAlarm(asset);
     }
     
-    /* Simuliert Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzt) */
+    /* Simuliert Preisupdates (in echtem Einsatz durch WebSocket/REST ersetzen) */
     function updatePrices() {
       assets.forEach((asset, index) => {
         const change = Math.random() * 10 - 5;
@@ -485,14 +459,16 @@
         if (asset.priceHistory.length > 5) {
           asset.priceHistory.shift();
         }
+        // Simuliere zufällige Werte für 24h- und 1h-Veränderung
         asset.change24h = (Math.random() * 20 - 10).toFixed(2);
         asset.change1h = (Math.random() * 4 - 2).toFixed(2);
+        // Simuliere RSI-Änderung und clamp zwischen 0 und 100
         asset.rsi = Math.max(0, Math.min(100, asset.rsi + (Math.random() * 10 - 5)));
         updateTile(asset, index);
       });
     }
     
-    /* Steuerungs-Buttons */
+    /* Überwachung starten/stoppen */
     document.getElementById("toggleMonitoring").addEventListener("click", () => {
       monitoringActive = !monitoringActive;
       const btn = document.getElementById("toggleMonitoring");
@@ -507,6 +483,7 @@
       }
     });
     
+    /* Toggle-Button für Alarm */
     document.getElementById("toggleAlarmBtn").addEventListener("click", () => {
       alarmEnabled = !alarmEnabled;
       const btn = document.getElementById("toggleAlarmBtn");
@@ -518,6 +495,7 @@
       }
     });
     
+    /* Toggle-Button für Sprachausgabe */
     document.getElementById("toggleSpeechBtn").addEventListener("click", () => {
       speechEnabled = !speechEnabled;
       const btn = document.getElementById("toggleSpeechBtn");
