@@ -133,8 +133,7 @@
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
   <script src="https://unpkg.com/feather-icons"></script>
 <script>
-  const alarmFlags = {}; // verhindert Mehrfachauslösung je Asset
-  <script>
+const alarmFlags = {}; // verhindert Mehrfachauslösung je Asset
     feather.replace();
 
     let monitoring = false;
@@ -308,13 +307,8 @@ let countdown = 30;
     const utterance = new SpeechSynthesisUtterance(`${symbolName} erreicht den Einstiegspreis`);
     window.speechSynthesis.speak(utterance);
   }
-      }
-    }
-
-    
-        
-      }
-    }
-  </script>
+        }
+}
+</script>
 </body>
 </html>
