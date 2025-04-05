@@ -150,8 +150,343 @@
     let speechEnabled = true;
     let monitoringActive = false;
     let simulationInterval;
-    // CRV-Schwellenwert: 80 % des Weges von Entry bis TP1
+    // CRV-Schwellenwert: 80% des Weges von Entry bis TP1
     const crvThreshold = 0.8;
-    // Zeit, wann der RSI zuletzt aktualisiert wurde (in ms)
+    // Zeit, wann RSI zuletzt aktualisiert wurde (in ms)
     let lastRSIUpdate = 0;
-    const RSI_UPDATE_INTERVAL = 60000;
+    const RSI_UPDATE_INTERVAL = 60000; // 60 Sekunden
+
+    // Liste der zu überwachenden Assets
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT"];
+
+    // Funktion zur Berechnung des RSI basierend auf 15 1h-Kerzen (14 Perioden)
+    async function fetchRSI(symbol) {
+      try {
+        const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
+        const klines = await response.json();
+        let gains = 0, losses = 0;
+        // Berechne Differenzen für 14 Perioden (von Kerze 1 bis 14)
+        for (let i = 1; i < klines.length; i++) {
+          const prevClose = parseFloat(klines[i-1][4]);
+          const close = parseFloat(klines[i][4]);
+          const diff = close - prevClose;
+          if(diff > 0) {
+            gains += diff;
+          } else {
+            losses += Math.abs(diff);
+          }
+        }
+        const avgGain = gains / 14;
+        const avgLoss = losses / 14;
+        if(avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        const rsi = 100 - (100 / (1 + rs));
+        return rsi;
+      } catch (e) {
+        console.error("Fehler beim Abrufen des RSI für", symbol, e);
+        return 50; // Standardwert
+      }
+    }
+
+    // Funktion, um echte Preisdaten von Binance abzurufen
+    async function fetchData(symbol) {
+      try {
+        const tickerRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+        const ticker = await tickerRes.json();
+        const klineRes = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=2`);
+        const klines = await klineRes.json();
+        const price = parseFloat(ticker.lastPrice);
+        const price1hAgo = parseFloat(klines[0][4]);
+        const change1h = ((price - price1hAgo) / price1hAgo) * 100;
+        return { price, change1h, change24h: parseFloat(ticker.priceChangePercent), volume: parseFloat(ticker.volume) };
+      } catch (e) {
+        console.error("Fehler beim Abrufen von Daten für", symbol, e);
+        return { price: 0, change1h: 0, change24h: 0, volume: 0 };
+      }
+    }
+
+    // Erstelle ein Asset-Objekt basierend auf echten Binance-Daten
+    async function getAssetData(symbol) {
+      const data = await fetchData(symbol);
+      const price = data.price;
+      return {
+        name: symbol,
+        displayName: symbol.slice(0, -4), // z.B. "BTC" aus "BTCUSDT"
+        fullName: symbol.slice(0, -4),    // Demo: gleich wie displayName
+        currentPrice: price,
+        entryPrice: price * 0.995,  // Beispiel: 0.5% unter aktuellem Preis
+        tp1: price * 1.015,         // Beispiel: 1.5% über aktuellem Preis
+        tp2: price * 1.03,          // Beispiel: 3% über aktuellem Preis
+        sl: price * 0.99,           // Beispiel: 1% unter aktuellem Preis
+        margin: price * 0.01,       // Beispiel: 1% Margin
+        alarmTriggered: false,
+        priceHistory: [],
+        tradeDirection: "neutral",
+        change24h: data.change24h,
+        change1h: data.change1h,
+        rsi: 50 // Standardwert, wird später aktualisiert
+      };
+    }
+
+    // Array der Asset-Daten (wird asynchron aufgebaut)
+    let assets = [];
+
+    // Generiere die Asset-Kacheln
+    async function generateAssetTiles() {
+      const assetGrid = document.getElementById("assetGrid");
+      assetGrid.innerHTML = "";
+      assets = [];
+      for (let i = 0; i < watchlist.length; i++) {
+        const symbol = watchlist[i];
+        const assetData = await getAssetData(symbol);
+        assets.push(assetData);
+        const tile = document.createElement("div");
+        tile.className = "asset-tile";
+        tile.id = "asset-" + i;
+        tile.innerHTML = `
+          <h2>${assetData.displayName}</h2>
+          <div class="price">Preis: ${assetData.currentPrice.toFixed(2)}</div>
+          <div class="price-change">0.00%</div>
+          <div class="score">Score: 0</div>
+          <div class="trade-direction">
+            <i data-feather="arrow-up"></i> Long
+          </div>
+          <div class="led-bar">
+            ${'<div class="segment"></div>'.repeat(8)}
+          </div>
+          <div class="trade-info">
+            <div>Einstieg: <span class="entry-price">${assetData.entryPrice.toFixed(2)}</span></div>
+            <div>TP1: <span class="tp1">${assetData.tp1.toFixed(2)}</span></div>
+            <div>TP2: <span class="tp2">${assetData.tp2.toFixed(2)}</span></div>
+            <div>SL: <span class="sl">${assetData.sl.toFixed(2)}</span></div>
+            <div>CRV: <span class="crv">-</span></div>
+            <div>24h: <span class="change24h">${assetData.change24h.toFixed(2)}%</span></div>
+            <div>1h: <span class="change1h">${assetData.change1h.toFixed(2)}%</span></div>
+            <div class="rsi-row">
+              <span class="rsi-label">RSI:</span>
+              <span class="rsi-value">${assetData.rsi}</span>
+              <span class="rsi-led-bar"></span>
+            </div>
+          </div>
+        `;
+        assetGrid.appendChild(tile);
+      }
+      feather.replace();
+    }
+
+    /* Aktualisiere den LED-Balken (Fortschritt) */
+    function updateLedBar(asset, tile) {
+      const ledBar = tile.querySelector(".led-bar");
+      const segments = ledBar.querySelectorAll(".segment");
+      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      progress = Math.max(0, Math.min(progress, 1));
+      const segmentsToLight = Math.floor(progress * segments.length);
+      segments.forEach((seg, index) => {
+        seg.classList.remove("active", "final");
+        if (index < segmentsToLight) {
+          seg.classList.add("active");
+          if (index === segments.length - 1 && progress === 1) {
+            seg.classList.add("final");
+          }
+        }
+      });
+    }
+
+    /* Aktualisiere die Preis-Anzeige */
+    function updatePriceDisplay(asset, tile) {
+      const priceDiv = tile.querySelector(".price");
+      priceDiv.textContent = "Preis: " + asset.currentPrice.toFixed(2);
+    }
+
+    /* Aktualisiere die prozentuale Preisveränderung */
+    function updatePriceChange(asset, tile) {
+      const priceChangeDiv = tile.querySelector(".price-change");
+      if (asset.priceHistory.length > 1) {
+        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
+        const change = ((asset.currentPrice - prevPrice) / prevPrice) * 100;
+        const sign = change >= 0 ? "+" : "";
+        priceChangeDiv.textContent = sign + change.toFixed(2) + "%";
+      } else {
+        priceChangeDiv.textContent = "0.00%";
+      }
+    }
+
+    /* Aktualisiere den Score (basierend auf dem Fortschritt) */
+    function updateScoreDisplay(asset, tile) {
+      const scoreElement = tile.querySelector(".score");
+      let progress = (asset.currentPrice - (asset.entryPrice - asset.margin)) / asset.margin;
+      progress = Math.max(0, Math.min(progress, 1));
+      const score = Math.floor(progress * 100);
+      scoreElement.textContent = "Score: " + score;
+    }
+
+    /* Aktualisiere die Trade-Richtungsanzeige */
+    function updateTradeDirection(asset, tile) {
+      const directionContainer = tile.querySelector(".trade-direction");
+      if (asset.priceHistory.length > 1) {
+        const prevPrice = asset.priceHistory[asset.priceHistory.length - 2];
+        if (asset.currentPrice > prevPrice) {
+          asset.tradeDirection = "long";
+        } else if (asset.currentPrice < prevPrice) {
+          asset.tradeDirection = "short";
+        } else {
+          asset.tradeDirection = "neutral";
+        }
+      }
+      if (asset.tradeDirection === "long") {
+        directionContainer.innerHTML = '<i data-feather="arrow-up"></i> Long';
+      } else if (asset.tradeDirection === "short") {
+        directionContainer.innerHTML = '<i data-feather="arrow-down"></i> Short';
+      } else {
+        directionContainer.innerHTML = '<i data-feather="minus"></i> Neutral';
+      }
+      feather.replace();
+    }
+
+    /* Aktualisiere die zusätzlichen Trade-Infos */
+    function updateTradeInfo(asset, tile) {
+      tile.querySelector(".entry-price").textContent = asset.entryPrice.toFixed(2);
+      tile.querySelector(".tp1").textContent = asset.tp1.toFixed(2);
+      tile.querySelector(".tp2").textContent = asset.tp2.toFixed(2);
+      tile.querySelector(".sl").textContent = asset.sl.toFixed(2);
+      const crv = (asset.tp1 - asset.entryPrice) / (asset.entryPrice - asset.sl);
+      tile.querySelector(".crv").textContent = crv.toFixed(2);
+      tile.querySelector(".change24h").textContent =
+        (asset.change24h >= 0 ? "+" : "") + asset.change24h + "%";
+      tile.querySelector(".change1h").textContent =
+        (asset.change1h >= 0 ? "+" : "") + asset.change1h + "%";
+      tile.querySelector(".rsi-value").textContent = asset.rsi.toFixed(0);
+      updateRSIBar(asset, tile);
+    }
+
+    /* Aktualisiere den RSI LED-Streifen */
+    function updateRSIBar(asset, tile) {
+      const rsiBar = tile.querySelector(".rsi-led-bar");
+      const segmentsCount = 8;
+      const activeSegments = Math.floor(asset.rsi / (100 / segmentsCount));
+      let activeColor = "#88bb88"; // entsättigtes Grün
+      if (asset.rsi < 30) {
+        activeColor = "#6699cc"; // entsättigtes Blau
+      } else if (asset.rsi > 70) {
+        activeColor = "#cc6666"; // entsättigtes Rot
+      }
+      let html = "";
+      for (let i = 0; i < segmentsCount; i++) {
+        if (i < activeSegments) {
+          html += `<div class="rsi-segment" style="background-color: ${activeColor};"></div>`;
+        } else {
+          html += `<div class="rsi-segment"></div>`;
+        }
+      }
+      rsiBar.innerHTML = html;
+    }
+
+    /* Alarm-Check unter CRV-Bedingung */
+    function checkAlarm(asset) {
+      const threshold = asset.entryPrice + (asset.tp1 - asset.entryPrice) * crvThreshold;
+      if (
+        !asset.alarmTriggered &&
+        asset.currentPrice >= asset.entryPrice &&
+        asset.currentPrice < threshold
+      ) {
+        asset.alarmTriggered = true;
+        if (alarmEnabled) {
+          document.getElementById("alarmAudio").play();
+        }
+        if (speechEnabled && "speechSynthesis" in window) {
+          const utterance = new SpeechSynthesisUtterance(asset.fullName + " erreicht den Einstiegspreis");
+          window.speechSynthesis.speak(utterance);
+        } else if (!speechEnabled) {
+          console.log(asset.fullName + " erreicht den Einstiegspreis");
+        }
+      }
+    }
+
+    /* Aktualisiert eine einzelne Kachel */
+    function updateTile(asset, index) {
+      const tile = document.getElementById("asset-" + index);
+      updatePriceDisplay(asset, tile);
+      updatePriceChange(asset, tile);
+      updateLedBar(asset, tile);
+      updateScoreDisplay(asset, tile);
+      updateTradeDirection(asset, tile);
+      updateTradeInfo(asset, tile);
+      checkAlarm(asset);
+    }
+
+    /* Aktualisiere alle Assets: echte Daten abrufen und aktualisieren */
+    async function updateAllAssets() {
+      // RSI nur einmal pro Minute aktualisieren
+      const now = Date.now();
+      let updateRSI = false;
+      if (now - lastRSIUpdate > 60000) {
+        updateRSI = true;
+        lastRSIUpdate = now;
+      }
+      for (let i = 0; i < assets.length; i++) {
+        const symbol = assets[i].name;
+        const data = await fetchData(symbol);
+        assets[i].currentPrice = data.price;
+        assets[i].change24h = data.change24h;
+        assets[i].change1h = data.change1h;
+        // Preis-Historie aktualisieren
+        assets[i].priceHistory.push(data.price);
+        if (assets[i].priceHistory.length > 5) {
+          assets[i].priceHistory.shift();
+        }
+        // Aktualisiere RSI nur, wenn updateRSI true ist
+        if (updateRSI) {
+          assets[i].rsi = await fetchRSI(symbol);
+        }
+        updateTile(assets[i], i);
+      }
+    }
+
+    /* Steuerungs-Buttons */
+    document.getElementById("toggleMonitoring").addEventListener("click", () => {
+      monitoringActive = !monitoringActive;
+      const btn = document.getElementById("toggleMonitoring");
+      if (monitoringActive) {
+        btn.textContent = "Überwachung stoppen";
+        btn.classList.add("active");
+        simulationInterval = setInterval(updateAllAssets, 1000);
+      } else {
+        btn.textContent = "Überwachung starten";
+        btn.classList.remove("active");
+        clearInterval(simulationInterval);
+      }
+    });
+
+    document.getElementById("toggleAlarmBtn").addEventListener("click", () => {
+      alarmEnabled = !alarmEnabled;
+      const btn = document.getElementById("toggleAlarmBtn");
+      btn.textContent = "Alarm: " + (alarmEnabled ? "aktiv" : "inaktiv");
+      if (alarmEnabled) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    document.getElementById("toggleSpeechBtn").addEventListener("click", () => {
+      speechEnabled = !speechEnabled;
+      const btn = document.getElementById("toggleSpeechBtn");
+      btn.textContent = "Sprachausgabe: " + (speechEnabled ? "aktiv" : "inaktiv");
+      if (speechEnabled) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    /* Initiale Generierung der Asset-Kacheln */
+    async function init() {
+      await generateAssetTiles();
+      // Optional: direkt die Überwachung starten:
+      // monitoringActive = true;
+      // simulationInterval = setInterval(updateAllAssets, 1000);
+    }
+    init();
+  </script>
+</body>
+</html>
