@@ -147,10 +147,6 @@
         <span>Dashboard</span>
       </a>
     </div>
-    <!-- Neuen Statusbereich in der Navigation einfügen -->
-    <div class="menu-item" id="monitorStatus">
-      <span>Überwachung gestoppt</span>
-    </div>
     <div class="menu-item">
       <a href="settings.html">
         <i data-feather="settings"></i>
@@ -187,7 +183,7 @@
     let countdown = 30;
     const countdownDisplay = document.getElementById("countdown");
     const assetGrid = document.getElementById("assetGrid");
-    const monitorStatus = document.getElementById("monitorStatus");  // neuer Statusbereich
+    const dashboardToggle = document.getElementById("dashboardToggle");
     const alarmFlags = {};
     // Angepasste Watchlist
     const watchlist = [
@@ -196,7 +192,7 @@
       "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
     ];
     
-    // Überwachung toggeln (start/stop) und Status im Menü aktualisieren
+    // Überwachung toggeln (start/stop) und Status im Dashboard-Link aktualisieren
     function toggleMonitoring() {
       if (!monitoring) {
         monitoring = true;
@@ -213,17 +209,17 @@
             countdownDisplay.textContent = countdown;
           }
         }, 1000);
-        monitorStatus.textContent = "Überwachung läuft";
+        dashboardToggle.querySelector("span").textContent = "Dashboard (läuft)";
       } else {
         monitoring = false;
         clearInterval(monitorInterval);
         clearInterval(countdownInterval);
-        monitorStatus.textContent = "Überwachung gestoppt";
+        dashboardToggle.querySelector("span").textContent = "Dashboard";
       }
     }
     
     // Dashboard-Link als Toggle für die Überwachung
-    document.getElementById("dashboardToggle").addEventListener("click", (e) => {
+    dashboardToggle.addEventListener("click", (e) => {
       e.preventDefault();
       toggleMonitoring();
     });
