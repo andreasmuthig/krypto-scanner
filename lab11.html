@@ -27,7 +27,6 @@
       transition: top 0.5s ease;
       z-index: 1100;
     }
-    /* Beim Start soll das Menü eingeblendet sein */
     #navMenu.visible {
       top: 0;
     }
@@ -48,7 +47,7 @@
     #navMenu .menu-item:hover a {
       text-shadow: 0 0 5px #666;
     }
-    /* Glüheffekt bei aktivem Menüpunkt (statt grünem Hintergrund) */
+    /* Glüheffekt bei aktivem Menüpunkt */
     #dashboardToggle.active a,
     #alarmToggle.active a {
       color: #28a745;
@@ -89,6 +88,26 @@
     .asset-tile div {
       margin: 4px 0;
     }
+    /* LED-Balken & RSI LED-Balken */
+    .led-bar, .rsi-led-bar {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin: 10px 0;
+    }
+    .segment {
+      width: 15px;
+      height: 8px;
+      background-color: #333;
+      border-radius: 2px;
+      transition: background-color 0.3s;
+    }
+    .rsi-segment {
+      width: 12px;
+      height: 6px;
+      background-color: #444;
+      border-radius: 2px;
+    }
     /* Überwachungs-Alerte: Kachel-Markierung */
     .asset-tile.entry-reached {
       border: 2px solid #4e8b03;
@@ -103,12 +122,12 @@
   </style>
 </head>
 <body>
-  <!-- Optional: Countdown-Anzeige -->
+  <!-- Countdown-Anzeige -->
   <div id="counter">
     Aktualisierung in: <span id="countdown">30</span>s
   </div>
 
-  <!-- Navigation (beim Laden sichtbar durch "visible") -->
+  <!-- Navigation -->
   <button id="menuToggle">
     <i data-feather="menu"></i>
   </button>
@@ -120,7 +139,6 @@
       </a>
     </div>
     <div class="menu-item" id="dashboardToggle">
-      <!-- Menüpunkt: Scannen -->
       <a href="#">
         <i data-feather="activity"></i>
         <span>Scannen</span>
@@ -133,7 +151,6 @@
       </a>
     </div>
     <div class="menu-item" id="alarmToggle">
-      <!-- Menüpunkt: Alarm -->
       <a href="#">
         <i data-feather="bell"></i>
         <span>Alarm</span>
@@ -151,28 +168,28 @@
     // Initialisiere Feather Icons
     feather.replace();
 
-    // Menü-Umschaltung beim Klick auf das rechte Icon:
+    // Menü-Umschaltung
     const menuToggle = document.getElementById("menuToggle");
     const navMenu = document.getElementById("navMenu");
     menuToggle.addEventListener("click", () => {
       navMenu.classList.toggle("visible");
     });
 
-    // Definition der Watchlist:
+    // Watchlist
     const watchlist = [
       "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
       "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT",
       "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
     ];
 
-    // Globaler Status und Intervalle für die Überwachung:
+    // Globaler Status für Monitoring
     let monitoring = false;
     let monitorInterval = null;
     let countdownInterval = null;
     let countdown = 30;
     const countdownDisplay = document.getElementById("countdown");
 
-    // Funktion toggleMonitoring: startet bzw. stoppt das Scannen (Tiles aktualisieren)
+    // Toggle Monitoring (Scannen)
     function toggleMonitoring() {
       if (!monitoring) {
         monitoring = true;
@@ -200,30 +217,30 @@
       }
     }
 
-    // Event Listener für den Menüpunkt "Scannen"
+    // Event Listener für Scannen
     const dashboardToggle = document.getElementById("dashboardToggle");
     dashboardToggle.addEventListener("click", (e) => {
       e.preventDefault();
       toggleMonitoring();
     });
 
-    // Für den Alarm-Menüpunkt: Toggle der Alarm-Funktion (Alarm-Sound und weitere Alarm-Funktionen)
+    // Toggle Alarm
     let alarmActive = false;
     const alarmToggle = document.getElementById("alarmToggle");
     alarmToggle.addEventListener("click", (e) => {
       e.preventDefault();
       alarmActive = !alarmActive;
-      if(alarmActive) {
+      if (alarmActive) {
         alarmToggle.classList.add("active");
         alarmToggle.querySelector("span").textContent = "Alarm (aktiv)";
       } else {
         alarmToggle.classList.remove("active");
         alarmToggle.querySelector("span").textContent = "Alarm";
       }
-      // Hier können weitere alarm-bezogene Funktionen ergänzt werden
+      // Weitere Alarm-Funktionen können hier ergänzt werden.
     });
 
-    // Funktionen für API-Aufrufe und Hilfsfunktionen:
+    // API-Aufrufe und Hilfsfunktionen
 
     // Holt 24h-Daten inkl. 24h-Volumen
     async function fetchData(symbol) {
@@ -237,20 +254,19 @@
       };
     }
 
-    // Holt den 1h-Volumenwert aus der 1h-Kline (Index 5 enthält das Volumen)
+    // Holt den 1h-Volumenwert
     async function fetchHourlyVolume(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=1`);
       const klines = await response.json();
       return parseFloat(klines[0][5]);
     }
 
-    // Beispiel-Funktion für RSI (hier als Platzhalter)
+    // Platzhalter für RSI-Berechnung
     async function fetchRSI(symbol) {
-      // Hier kannst du den RSI berechnen; als Platzhalter wird 50 zurückgegeben:
       return 50;
     }
 
-    // Weitere Funktionen (wie calculateEntry, fetchMACD etc.) bleiben unverändert:
+    // Berechnet EMA
     async function computeEMA(values, period) {
       const k = 2 / (period + 1);
       let ema = values[0];
@@ -260,6 +276,7 @@
       return ema;
     }
 
+    // Holt den MACD-Wert
     async function fetchMACD(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
       const klines = await response.json();
@@ -270,6 +287,7 @@
       return ema12 - ema26;
     }
 
+    // Berechnet den Entry-Wert anhand von Support-Level, ATR und RSI
     async function calculateEntry(symbol, data) {
       async function fetchSupportLevel(symbol) {
         const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
@@ -300,7 +318,7 @@
       return entry;
     }
 
-    // updateTiles: Aktualisiert alle Asset-Kacheln periodisch, inkl. Preis, Score, RSI, und auch der Volumenwerte (1h/24h)
+    // updateTiles: Aktualisiert alle Asset-Kacheln, inkl. Preis, Score, RSI, LED-Bar, Volumen etc.
     async function updateTiles() {
       const tiles = document.querySelectorAll(".asset-tile");
       for (let i = 0; i < watchlist.length; i++) {
@@ -324,10 +342,12 @@
 
         const tile = tiles[i];
         tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
-        // Volumenwerte aktualisieren:
+        // Aktualisiere Volumenwerte
         const volume1h = await fetchHourlyVolume(symbol);
         tile.querySelector(".volume-1h").textContent = `1h Volumen: ${volume1h.toFixed(2)}`;
         tile.querySelector(".volume-24h").textContent = `24h Volumen: ${data.volume24h.toFixed(2)}`;
+
+        // Falls vorhanden, aktualisiere Detailfelder
         let entryPriceElem = tile.querySelector(".entry-price");
         if (entryPriceElem) entryPriceElem.textContent = entry.toFixed(2);
         let tp1Elem = tile.querySelector(".tp1");
@@ -338,6 +358,7 @@
         if (slElem) slElem.textContent = sl.toFixed(2);
         let crvElem = tile.querySelector(".crv");
         if (crvElem) crvElem.textContent = crvRaw.toFixed(2);
+
         tile.querySelector(".score").innerHTML = `Score: ${scoreValue} (MACD: ${macdDisplay})`;
         tile.querySelector(".rsi-value").textContent = (await fetchRSI(symbol)).toFixed(0);
         let rsiLedBarElem = tile.querySelector(".rsi-led-bar");
@@ -353,7 +374,7 @@
         }
         feather.replace();
 
-        // Alarm-Logik:
+        // Alarm-Logik
         const alarmThreshold = entry + (tp1 - entry) * 0.8;
         if (!alarmFlags[symbol] && data.price >= entry && data.price < alarmThreshold) {
           alarmFlags[symbol] = true;
@@ -379,7 +400,7 @@
       }
     }
 
-    // buildTiles: Erstellt die Asset-Kacheln mit initialer Anzeige (inkl. 1h/24h Volumen)
+    // buildTiles: Erstellt die Kacheln initial mit allen Feldern inkl. LED-Anzeigen
     async function buildTiles() {
       assetGrid.innerHTML = "";
       for (const symbol of watchlist) {
@@ -396,7 +417,16 @@
           <div class="volume-24h">24h Volumen: ${data.volume24h.toFixed(2)}</div>
           <div class="score">Score: 0</div>
           <div class="trade-direction"><i data-feather="minus"></i> Neutral</div>
-          <div>RSI: <span class="rsi-value">${rsi.toFixed(0)}</span></div>
+          <div class="led-bar">${'<div class="segment"></div>'.repeat(8)}</div>
+          <div class="trade-info">
+            <div>Einstieg: <span class="entry-price">-</span></div>
+            <div>TP1: <span class="tp1">-</span></div>
+            <div>TP2: <span class="tp2">-</span></div>
+            <div>SL: <span class="sl">-</span></div>
+            <div>CRV: <span class="crv">-</span></div>
+            <div>RSI: <span class="rsi-value">${rsi.toFixed(0)}</span></div>
+            <div class="rsi-led-bar">${createRSILedBar(rsi)}</div>
+          </div>
         `;
         assetGrid.appendChild(tile);
       }
@@ -409,7 +439,7 @@
     // Container für Alarm-Flags (pro Asset)
     const alarmFlags = {};
 
-    // Funktion createRSILedBar (Beispielimplementierung)
+    // Funktion createRSILedBar: Erzeugt den LED-Balken für den RSI-Wert
     function createRSILedBar(rsi) {
       let html = "";
       const segments = 8;
