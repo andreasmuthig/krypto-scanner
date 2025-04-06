@@ -328,14 +328,20 @@
         const volume1h = await fetchHourlyVolume(symbol);
         tile.querySelector(".volume-1h").textContent = `1h Volumen: ${volume1h.toFixed(2)}`;
         tile.querySelector(".volume-24h").textContent = `24h Volumen: ${data.volume24h.toFixed(2)}`;
-        tile.querySelector(".entry-price")?.textContent = entry.toFixed(2);
-        tile.querySelector(".tp1")?.textContent = tp1.toFixed(2);
-        tile.querySelector(".tp2")?.textContent = tp2.toFixed(2);
-        tile.querySelector(".sl")?.textContent = sl.toFixed(2);
-        tile.querySelector(".crv")?.textContent = crvRaw.toFixed(2);
+        let entryPriceElem = tile.querySelector(".entry-price");
+        if (entryPriceElem) entryPriceElem.textContent = entry.toFixed(2);
+        let tp1Elem = tile.querySelector(".tp1");
+        if (tp1Elem) tp1Elem.textContent = tp1.toFixed(2);
+        let tp2Elem = tile.querySelector(".tp2");
+        if (tp2Elem) tp2Elem.textContent = tp2.toFixed(2);
+        let slElem = tile.querySelector(".sl");
+        if (slElem) slElem.textContent = sl.toFixed(2);
+        let crvElem = tile.querySelector(".crv");
+        if (crvElem) crvElem.textContent = crvRaw.toFixed(2);
         tile.querySelector(".score").innerHTML = `Score: ${scoreValue} (MACD: ${macdDisplay})`;
         tile.querySelector(".rsi-value").textContent = (await fetchRSI(symbol)).toFixed(0);
-        tile.querySelector(".rsi-led-bar")?.innerHTML = createRSILedBar(await fetchRSI(symbol));
+        let rsiLedBarElem = tile.querySelector(".rsi-led-bar");
+        if (rsiLedBarElem) rsiLedBarElem.innerHTML = createRSILedBar(await fetchRSI(symbol));
 
         const directionEl = tile.querySelector(".trade-direction");
         if (data.price > entry) {
@@ -392,8 +398,6 @@
           <div class="trade-direction"><i data-feather="minus"></i> Neutral</div>
           <div>RSI: <span class="rsi-value">${rsi.toFixed(0)}</span></div>
         `;
-        // Für zukünftige Updatemöglichkeiten innerhalb von updateTiles:
-        // (Optional: Falls du weitere Detailfelder wie Einstieg, TP1, TP2 etc. einfügen möchtest)
         assetGrid.appendChild(tile);
       }
       feather.replace();
@@ -404,6 +408,20 @@
 
     // Container für Alarm-Flags (pro Asset)
     const alarmFlags = {};
+
+    // Funktion createRSILedBar (Beispielimplementierung)
+    function createRSILedBar(rsi) {
+      let html = "";
+      const segments = 8;
+      const active = Math.floor((rsi / 100) * segments);
+      let color = "#88bb88";
+      if (rsi < 30) color = "#6699cc";
+      else if (rsi > 70) color = "#cc6666";
+      for (let i = 0; i < segments; i++) {
+        html += `<div class="rsi-segment" style="background-color: ${i < active ? color : "#444"};"></div>`;
+      }
+      return html;
+    }
   </script>
 </body>
 </html>
