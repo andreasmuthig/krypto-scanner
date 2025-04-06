@@ -48,7 +48,8 @@
     #navMenu .menu-item:hover a {
       background-color: #333;
     }
-    /* Alarm-Toggle: wenn aktiv, Hintergrund grün */
+    /* Glüh-Effekt bei aktivem Menüpunkt: */
+    #dashboardToggle.active a,
     #alarmToggle.active a {
       background-color: #28a745;
     }
@@ -148,9 +149,9 @@
         <span>Home</span>
       </a>
     </div>
-    <div class="menu-item">
-      <!-- Dashboard-Link als Toggle für Überwachung -->
-      <a href="#" id="dashboardToggle">
+    <div class="menu-item" id="dashboardToggle">
+      <!-- Zweiter Menüpunkt -->  
+      <a href="#">
         <i data-feather="activity"></i>
         <span>Scannen</span>
       </a>
@@ -161,8 +162,8 @@
         <span>Einstellungen</span>
       </a>
     </div>
-    <!-- Alarm-Toggle: statt "Benachrichtigungen" -->
     <div class="menu-item" id="alarmToggle">
+      <!-- Vierter Menüpunkt -->
       <a href="#">
         <i data-feather="bell"></i>
         <span>Alarm</span>
@@ -186,68 +187,32 @@
       navMenu.classList.toggle("visible");
     });
     
-    // Variablen für Überwachung und Alarm
-    let monitoring = false;
-    let alarmActive = false;
-    let monitorInterval, countdownInterval;
-    let countdown = 30;
-    const countdownDisplay = document.getElementById("countdown");
-    const assetGrid = document.getElementById("assetGrid");
+    // Event Listener für den zweiten (Scannen) und vierten (Alarm) Menüpunkt:
     const dashboardToggle = document.getElementById("dashboardToggle");
-    const alarmToggle = document.getElementById("alarmToggle");
-    const alarmFlags = {};
-    const watchlist = [
-      "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
-      "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT",
-      "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
-    ];
-    
-    // Überwachung toggeln (start/stop) und Status im Dashboard-Link aktualisieren
-    function toggleMonitoring() {
-      if (!monitoring) {
-        monitoring = true;
-        updateTiles();
-        countdown = 30;
-        countdownDisplay.textContent = countdown;
-        monitorInterval = setInterval(() => {
-          updateTiles();
-          countdown = 30;
-        }, 30000);
-        countdownInterval = setInterval(() => {
-          if (countdown > 0) {
-            countdown--;
-            countdownDisplay.textContent = countdown;
-          }
-        }, 1000);
-        dashboardToggle.querySelector("span").textContent = "Dashboard (läuft)";
-      } else {
-        monitoring = false;
-        clearInterval(monitorInterval);
-        clearInterval(countdownInterval);
-        dashboardToggle.querySelector("span").textContent = "Dashboard";
-      }
-    }
-    
-    // Dashboard-Link als Toggle für die Überwachung
     dashboardToggle.addEventListener("click", (e) => {
       e.preventDefault();
-      toggleMonitoring();
-    });
-    
-    // Alarm-Toggle: klickt der Nutzer hier, wird der Alarm aktiviert/deaktiviert
-    alarmToggle.addEventListener("click", (e) => {
-      e.preventDefault();
-      alarmActive = !alarmActive;
-      if (alarmActive) {
-        alarmToggle.querySelector("span").textContent = "Alarm";
-        alarmToggle.classList.add("active");
+      dashboardToggle.classList.toggle("active");
+      if(dashboardToggle.classList.contains("active")){
+        dashboardToggle.querySelector("span").textContent = "Scannen (läuft)";
       } else {
-        alarmToggle.querySelector("span").textContent = "Benachrichtigungen";
-        alarmToggle.classList.remove("active");
+        dashboardToggle.querySelector("span").textContent = "Scannen";
       }
     });
     
-    // API-Aufrufe und Hilfsfunktionen
+    const alarmToggle = document.getElementById("alarmToggle");
+    alarmToggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      alarmToggle.classList.toggle("active");
+      if(alarmToggle.classList.contains("active")){
+        alarmToggle.querySelector("span").textContent = "Alarm (aktiv)";
+      } else {
+        alarmToggle.querySelector("span").textContent = "Alarm";
+      }
+    });
+    
+    // Übriger Code (z. B. API-Aufrufe, buildTiles, updateTiles, etc.)
+    // Hier folgt der bestehende Code für den Abruf und die Darstellung der Asset-Tiles.
+    
     async function fetchData(symbol) {
       const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
       const data = await res.json();
@@ -401,7 +366,6 @@
           }
         }
         
-        // Markiere die Kachel nur beim ersten Überschreiten
         if (data.price >= entry) {
           if (!tile.dataset.hasSignaled) {
             tile.classList.add("entry-reached");
