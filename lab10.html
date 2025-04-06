@@ -150,7 +150,7 @@
       </a>
     </div>
     <div class="menu-item" id="dashboardToggle">
-      <!-- Zweiter Menüpunkt -->  
+      <!-- Zweiter Menüpunkt -->
       <a href="#">
         <i data-feather="activity"></i>
         <span>Scannen</span>
@@ -187,6 +187,13 @@
       navMenu.classList.toggle("visible");
     });
     
+    // Definition der Watchlist für spätere Nutzung:
+    const watchlist = [
+      "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
+      "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT",
+      "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
+    ];
+    
     // Event Listener für den zweiten (Scannen) und vierten (Alarm) Menüpunkt:
     const dashboardToggle = document.getElementById("dashboardToggle");
     dashboardToggle.addEventListener("click", (e) => {
@@ -211,8 +218,6 @@
     });
     
     // Übriger Code (z. B. API-Aufrufe, buildTiles, updateTiles, etc.)
-    // Hier folgt der bestehende Code für den Abruf und die Darstellung der Asset-Tiles.
-    
     async function fetchData(symbol) {
       const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
       const data = await res.json();
