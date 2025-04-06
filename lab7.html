@@ -12,10 +12,9 @@
       margin: 0;
       padding: 20px;
     }
-    /* --- Navigation Styles --- */
     #navMenu {
       position: fixed;
-      top: -70px; /* Start außerhalb des Viewports */
+      top: -70px;
       left: 0;
       width: 100%;
       height: 70px;
@@ -60,6 +59,7 @@
       display: flex;
       gap: 10px;
       justify-content: center;
+      margin-top: 80px;
       margin-bottom: 20px;
     }
     #controls button {
@@ -85,6 +85,7 @@
       text-align: center;
       font-size: 14px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: border 0.3s, box-shadow 0.3s;
     }
     .trade-info {
       display: grid;
@@ -127,52 +128,160 @@
       border: 2px solid #ffff00;
       box-shadow: 0 0 10px #ffff00;
     }
+    #counter {
+      text-align: center;
+      margin-bottom: 10px;
+      color: orange;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
-  <div id="counter" style="text-align: center; margin-bottom: 10px; color: orange; font-size: 14px;">
+  <!-- Menü -->
+  <button id="menuToggle"><i data-feather="menu"></i></button>
+  <nav id="navMenu">
+    <div class="menu-item"><a href="index.html"><i data-feather="home"></i> Home</a></div>
+    <div class="menu-item"><a href="dashboard.html"><i data-feather="activity"></i> Dashboard</a></div>
+    <div class="menu-item"><a href="settings.html"><i data-feather="settings"></i> Einstellungen</a></div>
+    <div class="menu-item"><a href="notifications.html"><i data-feather="bell"></i> Benachrichtigungen</a></div>
+  </nav>
+
+  <!-- Countdown -->
+  <div id="counter">
     Nächste Aktualisierung in: <span id="countdown">30</span>s
   </div>
+
+  <!-- Steuerung -->
   <div id="controls">
     <button id="toggleMonitoring">Überwachung starten</button>
     <button id="toggleAlarmBtn" class="active">Alarm: aktiv</button>
   </div>
-  <button id="menuToggle">
-    <i data-feather="menu"></i>
-  </button>
-  <nav id="navMenu">
-    <div class="menu-item">
-      <a href="index.html">
-        <i data-feather="home"></i>
-        <span>Home</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a href="dashboard.html">
-        <i data-feather="activity"></i>
-        <span>Dashboard</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a href="settings.html">
-        <i data-feather="settings"></i>
-        <span>Einstellungen</span>
-      </a>
-    </div>
-    <div class="menu-item">
-      <a href="notifications.html">
-        <i data-feather="bell"></i>
-        <span>Benachrichtigungen</span>
-      </a>
-    </div>
-  </nav>
+
+  <!-- Asset Grid -->
   <div class="asset-grid" id="assetGrid"></div>
+
+  <!-- Audio -->
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
+
+  <!-- Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
+
+  <!-- Funktionaler JS-Code -->
   <script>
-    // Initialisiere Feather Icons
     feather.replace();
+    const assetGrid = document.getElementById("assetGrid");
+    const menuToggle = document.getElementById("menuToggle");
+    const navMenu = document.getElementById("navMenu");
+    menuToggle.addEventListener("click", () => navMenu.classList.toggle("visible"));
+
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "MATICUSDT", "ARBUSDT"];
+
+    let monitoring = false;
+    let monitorInterval, countdownInterval;
+    let countdown = 30;
+    const alarmFlags = {};
+
+    document.getElementById("toggleMonitoring").addEventListener("click", () => {
+      monitoring = !monitoring;
+      const btn = document.getElementById("toggleMonitoring");
+      const countdownDisplay = document.getElementById("countdown");
+
+      if (monitoring) {
+        btn.textContent = "Überwachung stoppen";
+        btn.classList.add("active");
+        updateTiles();
+        countdown = 30;
+        countdownDisplay.textContent = countdown;
+        monitorInterval = setInterval(() => {
+          updateTiles();
+          countdown = 30;
+        }, 30000);
+        countdownInterval = setInterval(() => {
+          countdown--;
+          if (countdown >= 0) countdownDisplay.textContent = countdown;
+        }, 1000);
+      } else {
+        btn.textContent = "Überwachung starten";
+        btn.classList.remove("active");
+        clearInterval(monitorInterval);
+        clearInterval(countdownInterval);
+      }
+    });
+
+    document.getElementById("toggleAlarmBtn").addEventListener("click", () => {
+      const btn = document.getElementById("toggleAlarmBtn");
+      btn.classList.toggle("active");
+      btn.textContent = btn.classList.contains("active") ? "Alarm: aktiv" : "Alarm: aus";
+    });
+
+    async function fetchData(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+      const data = await res.json();
+      return {
+        price: parseFloat(data.lastPrice),
+        change24h: parseFloat(data.priceChangePercent)
+      };
+    }
+
+    async function fetchRSI(symbol) {
+      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
+      const klines = await res.json();
+      let gains = 0, losses = 0;
+      for (let i = 1; i < klines.length; i++) {
+        const diff = parseFloat(klines[i][4]) - parseFloat(klines[i - 1][4]);
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+      }
+      const avgGain = gains / 14;
+      const avgLoss = losses / 14;
+      const rs = avgGain / avgLoss;
+      return 100 - (100 / (1 + rs));
+    }
+
+    function createRSILedBar(rsi) {
+      let html = "";
+      const segments = 8;
+      const active = Math.floor((rsi / 100) * segments);
+      let color = "#88bb88";
+      if (rsi < 30) color = "#6699cc";
+      else if (rsi > 70) color = "#cc6666";
+      for (let i = 0; i < segments; i++) {
+        html += `<div class="rsi-segment" style="background-color: ${i < active ? color : "#444"};"></div>`;
+      }
+      return html;
+    }
+
+    async function buildTiles() {
+      assetGrid.innerHTML = "";
+      for (const symbol of watchlist) {
+        const data = await fetchData(symbol);
+        const rsi = await fetchRSI(symbol);
+        const tile = document.createElement("div");
+        tile.className = "asset-tile";
+        tile.innerHTML = `
+          <h2>${symbol.replace("USDT", "")}</h2>
+          <div class="price">Preis: ${data.price.toFixed(2)}</div>
+          <div class="price-change">24h: ${data.change24h.toFixed(2)}%</div>
+          <div class="score">Score: 0</div>
+          <div class="trade-direction"><i data-feather="minus"></i> Neutral</div>
+          <div class="led-bar">${'<div class="segment"></div>'.repeat(8)}</div>
+          <div class="trade-info">
+            <div>Einstieg: <span class="entry-price">-</span></div>
+            <div>TP1: <span class="tp1">-</span></div>
+            <div>TP2: <span class="tp2">-</span></div>
+            <div>SL: <span class="sl">-</span></div>
+            <div>CRV: <span class="crv">-</span></div>
+            <div>RSI: <span class="rsi-value">${rsi.toFixed(0)}</span></div>
+            <div class="rsi-led-bar">${createRSILedBar(rsi)}</div>
+          </div>
+        `;
+        assetGrid.appendChild(tile);
+      }
+      feather.replace();
+    }
+
+    buildTiles();
+    // updateTiles() ist hier nicht enthalten – folgt bei Bedarf separat
   </script>
-  <!-- Hinweis: Diese Version fügt die Klasse "entry-reached" hinzu, wenn der Preis den Einstieg erreicht oder überschreitet, und entfernt sie nach 10 Sekunden wieder – so wird die Markierung erneut ausgelöst, wenn sich der Zustand ändert. -->
 </body>
 </html>
