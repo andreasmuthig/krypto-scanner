@@ -589,7 +589,6 @@ In dieser Version wird, wenn der aktuelle Preis den ermittelten Einstiegspreis e
       background-color: #444;
       border-radius: 2px;
     }
-    /* Neue CSS-Regel zur Markierung der Kachel, wenn der Einstiegspreis erreicht wurde */
     .asset-tile.entry-reached {
       border: 2px solid #ffff00;
       box-shadow: 0 0 10px #ffff00;
@@ -864,9 +863,6 @@ In dieser Version wird, wenn der aktuelle Preis den ermittelten Einstiegspreis e
             audio.play();
           }
         }
-        
-        // Neue Logik: Markiere die Kachel, wenn der Preis den Einstieg erreicht hat 
-        // und entferne die Markierung 10 Sekunden später.
         if (data.price >= entry) {
           if (!tile.dataset.entryTimer) {
             tile.classList.add("entry-reached");
