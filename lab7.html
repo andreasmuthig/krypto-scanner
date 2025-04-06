@@ -175,7 +175,6 @@
     menuToggle.addEventListener("click", () => navMenu.classList.toggle("visible"));
 
     const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "MATICUSDT", "ARBUSDT"];
-
     let monitoring = false;
     let monitorInterval, countdownInterval;
     let countdown = 30;
@@ -280,8 +279,13 @@
       feather.replace();
     }
 
+    // Minimal implementierte updateTiles‑Funktion,
+    // die hier buildTiles erneut aufruft. Ersetze dies bei Bedarf
+    async function updateTiles() {
+      await buildTiles();
+    }
+
     buildTiles();
-    // updateTiles() ist hier nicht enthalten – folgt bei Bedarf separat
   </script>
 </body>
 </html>
