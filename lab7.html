@@ -404,11 +404,20 @@
           }
         }
         
-        // Neue Logik: Markiere die Kachel, wenn der Preis den Einstieg erreicht hat
+        // Neue Logik: Markiere die Kachel, wenn der Preis den Einstieg erreicht hat 
+        // und entferne die Markierung 10 Sekunden später.
         if (data.price >= entry) {
-          tile.classList.add("entry-reached");
+          if (!tile.dataset.entryTimer) {
+            tile.classList.add("entry-reached");
+            tile.dataset.entryTimer = "true";
+            setTimeout(() => {
+              tile.classList.remove("entry-reached");
+              delete tile.dataset.entryTimer;
+            }, 10000);
+          }
         } else {
           tile.classList.remove("entry-reached");
+          delete tile.dataset.entryTimer;
         }
       }
     }
@@ -449,7 +458,7 @@
 </html>
 ``` 
 
-Die neuen Zeilen sorgen dafür, dass in der Funktion updateTiles jede Kachel mit der CSS-Klasse "entry-reached" markiert wird, wenn der aktuelle Preis den errechneten Einstiegspreis erreicht oder überschreitet (sichtbar als gelber Rahmen und Leuchteffekt).// filepath: /Users/andreasmuthig/Desktop/kryptoanalyse 2/lab7.html
+In dieser Version wird, wenn der aktuelle Preis den ermittelten Einstiegspreis erreicht oder überschreitet, die Klasse "entry-reached" hinzugefügt – falls sie noch nicht gesetzt ist – und nach 10 Sekunden wieder entfernt. So bleibt der Rahmen nur 10 Sekunden sichtbar, sodass die Markierung erneut ausgelöst werden kann.// filepath: /Users/andreasmuthig/Desktop/kryptoanalyse 2/lab7.html
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -856,11 +865,20 @@ Die neuen Zeilen sorgen dafür, dass in der Funktion updateTiles jede Kachel mit
           }
         }
         
-        // Neue Logik: Markiere die Kachel, wenn der Preis den Einstieg erreicht hat
+        // Neue Logik: Markiere die Kachel, wenn der Preis den Einstieg erreicht hat 
+        // und entferne die Markierung 10 Sekunden später.
         if (data.price >= entry) {
-          tile.classList.add("entry-reached");
+          if (!tile.dataset.entryTimer) {
+            tile.classList.add("entry-reached");
+            tile.dataset.entryTimer = "true";
+            setTimeout(() => {
+              tile.classList.remove("entry-reached");
+              delete tile.dataset.entryTimer;
+            }, 10000);
+          }
         } else {
           tile.classList.remove("entry-reached");
+          delete tile.dataset.entryTimer;
         }
       }
     }
@@ -899,6 +917,3 @@ Die neuen Zeilen sorgen dafür, dass in der Funktion updateTiles jede Kachel mit
   </script>
 </body>
 </html>
-``` 
-
-Die neuen Zeilen sorgen dafür, dass in der Funktion updateTiles jede Kachel mit der CSS-Klasse "entry-reached" markiert wird, wenn der aktuelle Preis den errechneten Einstiegspreis erreicht oder überschreitet (sichtbar als gelber Rahmen und Leuchteffekt).
