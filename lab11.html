@@ -50,7 +50,7 @@
       color: #28a745;
       text-shadow: 0 0 1px #28a745, 0 0 4px #28a745, 0 0 8px #28a745;
     }
-    /* Toggle-Button für Navigation */
+    /* Toggle-Button */
     #menuToggle {
       position: fixed;
       top: 10px;
@@ -63,11 +63,11 @@
       color: #e0e0e0;
       cursor: pointer;
     }
-    /* Grid für Asset-Kacheln */
+    /* Grid und Asset-Kacheln */
     .asset-grid {
       margin-top: 70px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px,1fr));
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
       gap: 20px;
     }
     .asset-tile {
@@ -82,7 +82,9 @@
     .asset-tile h2 { margin-bottom: 10px; }
     .asset-tile div { margin: 4px 0; }
     /* LED-Balken */
-    .led-bar, .rsi-led-bar, .crv-led-bar {
+    .led-bar,
+    .rsi-led-bar,
+    .crv-led-bar {
       display: flex;
       gap: 4px;
       justify-content: center;
@@ -97,7 +99,7 @@
     }
     .segment.active { background-color: #28a745; }
     .segment.final { box-shadow: 0 0 5px #28a745; }
-    /* Für den CRV LED-Balken – keine zusätzlichen Rahmen */
+    /* CRV LED-Balken (ohne zusätzlichen Rahmen) */
     .crv-segment {
       width: 15px;
       height: 8px;
@@ -121,7 +123,9 @@
       font-size: 12px;
       margin-top: 5px;
     }
-    .led-label, .rsi-label, .crv-label {
+    .led-label,
+    .rsi-label,
+    .crv-label {
       text-align: center;
       font-size: 10px;
       margin-top: 2px;
@@ -162,9 +166,9 @@
     
     // Watchlist
     const watchlist = [
-      "BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT",
-      "ADAUSDT","DOTUSDT","LINKUSDT","AVAXUSDT",
-      "DOGEUSDT","TRXUSDT","ARBUSDT","TRUMPUSDT"
+      "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
+      "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT",
+      "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
     ];
     
     // Globaler Status und Timer
@@ -179,8 +183,8 @@
         countdown = 30;
         countdownDisplay.textContent = countdown;
         monitorInterval = setInterval(() => { updateTiles(); countdown = 30; }, 30000);
-        countdownInterval = setInterval(() => {
-          if (countdown > 0) { countdown--; countdownDisplay.textContent = countdown; }
+        countdownInterval = setInterval(() => { 
+          if (countdown > 0) { countdown--; countdownDisplay.textContent = countdown; } 
         }, 1000);
         dashboardToggle.classList.add("active");
         dashboardToggle.querySelector("span").textContent = "Scannen (läuft)";
@@ -221,11 +225,13 @@
         volume24h: parseFloat(data.volume)
       };
     }
+    
     async function fetchHourlyVolume(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=1`);
       const klines = await response.json();
       return parseFloat(klines[0][5]);
     }
+    
     async function fetchRSI(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
       const klines = await response.json();
@@ -233,7 +239,8 @@
       let gains = 0, losses = 0;
       for (let i = 1; i < closes.length; i++) {
         const change = closes[i] - closes[i-1];
-        if (change > 0) gains += change; else losses += Math.abs(change);
+        if (change > 0) gains += change;
+        else losses += Math.abs(change);
       }
       const period = closes.length - 1;
       const avgGain = gains / period;
@@ -241,6 +248,7 @@
       let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
       return 100 - (100 / (1 + rs));
     }
+    
     async function computeEMA(values, period) {
       const k = 2 / (period + 1);
       let ema = values[0];
@@ -249,6 +257,7 @@
       }
       return ema;
     }
+    
     async function fetchMACD(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
       const klines = await response.json();
@@ -258,6 +267,7 @@
       const ema26 = await computeEMA(closes, 26);
       return ema12 - ema26;
     }
+    
     async function calculateEntry(symbol, data) {
       async function fetchSupportLevel(symbol) {
         const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
@@ -273,9 +283,9 @@
           const high = parseFloat(k[2]);
           const low = parseFloat(k[3]);
           const prevClose = parseFloat(klines[i-1][4]);
-          return Math.max(high-low, Math.abs(high-prevClose), Math.abs(low-prevClose));
+          return Math.max(high - low, Math.abs(high-prevClose), Math.abs(low-prevClose));
         });
-        return tr.reduce((sum,val) => sum + val, 0) / (tr.length - 1);
+        return tr.reduce((sum, val) => sum + val, 0) / (tr.length - 1);
       }
       const supportLevel = await fetchSupportLevel(symbol);
       const atr = await fetchATR(symbol);
@@ -285,22 +295,21 @@
       return entry;
     }
     
-    // Funktion createCRVLedBar: Verwendet das Chance-Risiko-Verhältnis (CRV)
-    // CRV = (TP1 - Entry) / (Entry - SL)
-    // Optimal: CRV ≤ 2 (grün, voll gefüllt); zwischen 2 und 3: Anzeige nimmt ab und wechselt in Orange; ab 3: rot (0 Segmente)
+    // Funktion createCRVLedBar mit angepassten Parametern (optimalCRV = 2, maxCRV = 2.5)
     function createCRVLedBar(crv) {
       const segments = 8;
       let ledsToLight = 0;
-      let color = "#28a745"; // Grün
-      const optimalCRV = 2, maxCRV = 3;
+      let color = "#28a745"; // grün
+      const optimalCRV = 2;
+      const maxCRV = 2.5;
       if (crv <= optimalCRV) {
         ledsToLight = Math.floor((crv / optimalCRV) * segments);
       } else if (crv < maxCRV) {
         ledsToLight = Math.floor(segments * ((maxCRV - crv) / (maxCRV - optimalCRV)));
-        color = "#ff9900"; // Orange
+        color = "#ff9900"; // orange
       } else {
         ledsToLight = 0;
-        color = "#cc0000"; // Rot
+        color = "#cc0000"; // rot
       }
       let html = "";
       for (let i = 0; i < segments; i++) {
@@ -353,7 +362,7 @@
         if (tile.querySelector(".crv-led-bar"))
           tile.querySelector(".crv-led-bar").innerHTML = createCRVLedBar(crv);
         
-        // Richtungsanzeige: Short (Preis < Entry), Long (zwischen Entry und TP1), TP erreicht (Preis ≥ TP1)
+        // Richtungsanzeige
         const directionEl = tile.querySelector(".trade-direction");
         let direction = "Neutral";
         if (data.price < entry) { direction = '<i data-feather="arrow-down"></i> Short'; }
@@ -363,12 +372,12 @@
         console.log(`Symbol: ${symbol} | Preis: ${data.price.toFixed(2)}, Entry: ${entry.toFixed(2)}, tp1: ${tp1.toFixed(2)} -> ${direction.replace(/<[^>]+>/g, '')}`);
         feather.replace();
         
-        // LED-Logik für den Fortschritt von Entry bis TP1 (alt/zusätzlich)
+        // LED-Logik für den Fortschritt (Entry bis TP1)
         const ledSegments = tile.querySelectorAll(".segment");
-        const prog = Math.min(1, Math.max(0, (data.price - entry)/(tp1 - entry)));
+        const prog = Math.min(1, Math.max(0, (data.price - entry) / (tp1 - entry)));
         const ledsToLight = Math.floor(prog * ledSegments.length);
         ledSegments.forEach((seg, index) => {
-          seg.classList.remove("active","final");
+          seg.classList.remove("active", "final");
           if (index < ledsToLight) {
             seg.classList.add("active");
             if (index === ledSegments.length - 1) seg.classList.add("final");
@@ -377,14 +386,14 @@
         const progressLabel = tile.querySelector(".progress-label");
         if (progressLabel) { progressLabel.textContent = `Progress: ${Math.floor(prog * 100)}%`; }
         
-        // Alarm-Logik: Alarm wird ausgelöst, sobald der Kurs 99 % des Einstiegspreises erreicht (aber noch nicht den Entry übersteigt)
+        // Alarm-Logik: Auslösen, sobald der Kurs 99 % des Einstiegspreises erreicht (aber noch nicht überschritten)
         if (!alarmFlags[symbol] && data.price >= (entry * 0.99) && data.price < entry) {
           alarmFlags[symbol] = true;
           const audio = document.getElementById("alarmAudio");
           if (alarmToggle.classList.contains("active")) { audio.play(); }
         }
         
-        // Markiere Kachel, wenn Entry erreicht wurde
+        // Markiere Kachel, wenn Entry erreicht
         if (data.price >= entry) {
           if (!tile.dataset.hasSignaled) {
             tile.classList.add("entry-reached");
@@ -431,10 +440,11 @@
       }
       feather.replace();
     }
+    
     buildTiles();
     const alarmFlags = {};
     
-    // Funktion createRSILedBar (optional, unverändert)
+    // Funktion createRSILedBar (unverändert)
     function createRSILedBar(rsi) {
       let html = "";
       const segments = 8;
