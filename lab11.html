@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crypto Monitor - Lab 11</title>
   <style>
+    /* Allgemeine Styles */
     body {
       background-color: #121212;
       color: #e0e0e0;
@@ -12,10 +13,10 @@
       margin: 0;
       padding: 20px;
     }
-    /* --- Navigation Styles --- */
+    /* Navigation */
     #navMenu {
       position: fixed;
-      top: -70px; /* standardmäßig versteckt */
+      top: -70px; /* Standardmäßig versteckt */
       left: 0;
       width: 100%;
       height: 70px;
@@ -47,7 +48,7 @@
     #navMenu .menu-item:hover a {
       text-shadow: 0 0 5px #666;
     }
-    /* Glüheffekt bei aktivem Menüpunkt */
+    /* Glüheffekt bei aktiven Menüpunkten */
     #dashboardToggle.active a,
     #alarmToggle.active a {
       color: #28a745;
@@ -66,7 +67,7 @@
       color: #e0e0e0;
       cursor: pointer;
     }
-    /* Asset Grid */
+    /* Grid für Asset-Kacheln */
     .asset-grid {
       margin-top: 70px;
       display: grid;
@@ -88,7 +89,7 @@
     .asset-tile div {
       margin: 4px 0;
     }
-    /* LED-Balken & RSI LED-Balken */
+    /* LED-Balken und RSI-LED-Balken */
     .led-bar, .rsi-led-bar {
       display: flex;
       gap: 4px;
@@ -108,24 +109,25 @@
       background-color: #444;
       border-radius: 2px;
     }
-    /* Überwachungs-Alerte: Kachel-Markierung */
+    /* Box-Hervorhebung bei erreichten Entry-Preisen */
     .asset-tile.entry-reached {
       border: 2px solid #4e8b03;
       box-shadow: 0 0 10px #4e8b03;
     }
+    /* Countdown-Style */
     #counter {
       text-align: center;
       margin-bottom: 10px;
       color: orange;
       font-size: 14px;
     }
-    /* Style für Progress-Label */
+    /* Progress-Label */
     .progress-label {
       text-align: center;
       font-size: 12px;
       margin-top: 5px;
     }
-    /* Optional: Labels für LED-Anzeigen */
+    /* Optionale Labels für LED-Anzeigen */
     .led-label, .rsi-label {
       text-align: center;
       font-size: 10px;
@@ -139,69 +141,66 @@
     Aktualisierung in: <span id="countdown">30</span>s
   </div>
 
-  <!-- Navigation -->
+  <!-- Navigation und Menü -->
   <button id="menuToggle">
     <i data-feather="menu"></i>
   </button>
   <nav id="navMenu" class="visible">
     <div class="menu-item">
       <a href="index.html">
-        <i data-feather="home"></i>
-        <span>Home</span>
+        <i data-feather="home"></i> <span>Home</span>
       </a>
     </div>
     <div class="menu-item" id="dashboardToggle">
       <a href="#">
-        <i data-feather="activity"></i>
-        <span>Scannen</span>
+        <i data-feather="activity"></i> <span>Scannen</span>
       </a>
     </div>
     <div class="menu-item">
       <a href="settings.html">
-        <i data-feather="settings"></i>
-        <span>Einstellungen</span>
+        <i data-feather="settings"></i> <span>Einstellungen</span>
       </a>
     </div>
     <div class="menu-item" id="alarmToggle">
       <a href="#">
-        <i data-feather="bell"></i>
-        <span>Alarm</span>
+        <i data-feather="bell"></i> <span>Alarm</span>
       </a>
     </div>
   </nav>
 
-  <!-- Asset Grid -->
+  <!-- Grid für die Asset-Kacheln -->
   <div class="asset-grid" id="assetGrid"></div>
-  <!-- Alarm Audio -->
+  <!-- Alarm-Audio -->
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
 
+  <!-- Einbinden von Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
   <script>
-    // Initialisiere Feather Icons
+    // Feather Icons initialisieren
     feather.replace();
 
-    // Menü-Umschaltung
+    // Navigation: Menü-Umschaltung
     const menuToggle = document.getElementById("menuToggle");
     const navMenu = document.getElementById("navMenu");
     menuToggle.addEventListener("click", () => {
       navMenu.classList.toggle("visible");
     });
 
-    // Watchlist
+    // Watchlist der Symbole
     const watchlist = [
       "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT",
       "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT",
       "DOGEUSDT", "TRXUSDT", "ARBUSDT", "TRUMPUSDT"
     ];
 
-    // Globaler Status für Monitoring
+    // Globaler Status für das Monitoring
     let monitoring = false;
     let monitorInterval = null;
     let countdownInterval = null;
     let countdown = 30;
     const countdownDisplay = document.getElementById("countdown");
 
-    // Toggle Monitoring (Scannen)
+    // Funktion zum Umschalten des Monitorings (Scannen)
     function toggleMonitoring() {
       if (!monitoring) {
         monitoring = true;
@@ -229,14 +228,14 @@
       }
     }
 
-    // Event Listener für Scannen
+    // Event Listener für das Scannen
     const dashboardToggle = document.getElementById("dashboardToggle");
     dashboardToggle.addEventListener("click", (e) => {
       e.preventDefault();
       toggleMonitoring();
     });
 
-    // Toggle Alarm
+    // Funktion zum Umschalten des Alarms
     let alarmActive = false;
     const alarmToggle = document.getElementById("alarmToggle");
     alarmToggle.addEventListener("click", (e) => {
@@ -251,9 +250,9 @@
       }
     });
 
-    // API-Aufrufe und Hilfsfunktionen
+    // API-Aufrufe und Hilfsfunktionen:
 
-    // Holt 24h-Daten inkl. 24h-Volumen
+    // Holt 24h-Daten inklusive 24h-Volumen von Binance
     async function fetchData(symbol) {
       const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
       const data = await res.json();
@@ -272,12 +271,12 @@
       return parseFloat(klines[0][5]);
     }
 
-    // Demo RSI: liefert dynamische Werte zwischen 30 und 70
+    // Demo-RSI: Liefert dynamische Werte zwischen 30 und 70 (nur Demo)
     async function fetchRSI(symbol) {
       return Math.floor(Math.random() * 41) + 30;
     }
 
-    // Berechnet EMA
+    // EMA-Berechnung
     async function computeEMA(values, period) {
       const k = 2 / (period + 1);
       let ema = values[0];
@@ -328,7 +327,7 @@
       return entry;
     }
 
-    // updateTiles: Aktualisiert alle Asset-Kacheln
+    // updateTiles: Aktualisiert alle Asset-Kacheln basierend auf aktuellen API-Daten
     async function updateTiles() {
       const tiles = document.querySelectorAll(".asset-tile");
       for (let i = 0; i < watchlist.length; i++) {
@@ -368,13 +367,14 @@
           tile.querySelector(".crv").textContent = crvRaw.toFixed(2);
 
         tile.querySelector(".score").innerHTML = `Score: ${scoreValue} (MACD: ${macdDisplay})`;
-        // Wir holen den RSI einmalig
+        
+        // RSI einmalig holen
         const currentRSI = await fetchRSI(symbol);
         tile.querySelector(".rsi-value").textContent = currentRSI.toFixed(0);
         if (tile.querySelector(".rsi-led-bar"))
           tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(currentRSI);
 
-        // Richtungsanzeige: Short, Long oder TP erreicht
+        // Richtungsanzeige: Kurz (Short) bei Preis unter Entry, Long ab Entry, und TP erreicht wenn Preis ≥ tp1
         const directionEl = tile.querySelector(".trade-direction");
         let direction = "Neutral";
         if (data.price < entry) {
@@ -385,11 +385,10 @@
           direction = '<i data-feather="check"></i> TP erreicht';
         }
         directionEl.innerHTML = direction;
-        console.log(`Symbol: ${symbol} | Preis: ${data.price}, Entry: ${entry}, tp1: ${tp1} -> Direction: ${direction.replace(/<[^>]+>/g, '')}`);
-        // Erneuere die Feather-Icons
+        console.log(`Symbol: ${symbol} | Preis: ${data.price.toFixed(2)}, Entry: ${entry.toFixed(2)}, tp1: ${tp1.toFixed(2)} -> Direction: ${direction.replace(/<[^>]+>/g, '')}`);
         feather.replace();
 
-        // LED-Logik: Fortschritt Entry bis TP1
+        // LED-Logik: Fortschritt von Entry bis TP1 berechnen
         const ledSegments = tile.querySelectorAll(".segment");
         const prog = Math.min(1, Math.max(0, (data.price - entry) / (tp1 - entry)));
         const ledsToLight = Math.floor(prog * ledSegments.length);
@@ -402,13 +401,13 @@
             }
           }
         });
-        // Aktualisiere Progress-Label
+        // Aktualisiere das Progress-Label
         const progressLabel = tile.querySelector(".progress-label");
         if (progressLabel) {
           progressLabel.textContent = `Progress: ${Math.floor(prog * 100)}%`;
         }
 
-        // Alarm-Logik
+        // Alarm-Logik: wenn Preis zwischen Entry und 80% von tp1 liegt
         const alarmThreshold = entry + (tp1 - entry) * 0.8;
         if (!alarmFlags[symbol] && data.price >= entry && data.price < alarmThreshold) {
           alarmFlags[symbol] = true;
@@ -418,7 +417,7 @@
           }
         }
 
-        // Kachel-Rahmen bei Erreichen des Entry-Preises
+        // Markiere Kachel, wenn Entry erreicht wurde
         if (data.price >= entry) {
           if (!tile.dataset.hasSignaled) {
             tile.classList.add("entry-reached");
@@ -434,7 +433,7 @@
       }
     }
 
-    // buildTiles: Erstellt initial die Kacheln inkl. LED-Anzeigen und Labels
+    // buildTiles: Erstellt die Kacheln initial inkl. LED-Anzeigen und Labels
     async function buildTiles() {
       assetGrid.innerHTML = "";
       for (const symbol of watchlist) {
