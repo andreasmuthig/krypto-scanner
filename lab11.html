@@ -374,7 +374,7 @@
         }
         feather.replace();
 
-        // LED-Logik: Fortschritt vom Entry bis TP1 (als Beispiel)
+        // LED-Logik: Fortschritt vom Entry bis TP1
         const ledSegments = tile.querySelectorAll(".segment");
         const progress = Math.min(1, Math.max(0, (data.price - entry) / (tp1 - entry)));
         const ledsToLight = Math.floor(progress * ledSegments.length);
