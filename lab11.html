@@ -16,7 +16,7 @@
     /* Navigation */
     #navMenu {
       position: fixed;
-      top: -70px; /* Standardmäßig versteckt */
+      top: -70px;
       left: 0;
       width: 100%;
       height: 70px;
@@ -81,8 +81,8 @@
     }
     .asset-tile h2 { margin-bottom: 10px; }
     .asset-tile div { margin: 4px 0; }
-    /* LED-Balken und RSI LED-Balken */
-    .led-bar, .rsi-led-bar {
+    /* LED-Balken */
+    .led-bar, .rsi-led-bar, .crv-led-bar {
       display: flex;
       gap: 4px;
       justify-content: center;
@@ -93,21 +93,18 @@
       height: 8px;
       background-color: #333;
       border-radius: 2px;
-      transition: background-color 0.3s, border 0.3s;
+      transition: background-color 0.3s;
     }
-    /* Für bessere Sichtbarkeit der aktiven Segmente */
-    .segment.active {
-      background-color: #28a745;
-      border: 1px solid #fff;
-    }
+    .segment.active { background-color: #28a745; }
     .segment.final { box-shadow: 0 0 5px #28a745; }
-    .rsi-segment {
-      width: 12px;
-      height: 6px;
+    /* Für den CRV LED-Balken – keine zusätzlichen Rahmen */
+    .crv-segment {
+      width: 15px;
+      height: 8px;
       background-color: #444;
       border-radius: 2px;
+      transition: background-color 0.3s;
     }
-    /* Box-Hervorhebung bei erreichten Entry-Preisen */
     .asset-tile.entry-reached {
       border: 2px solid #4e8b03;
       box-shadow: 0 0 10px #4e8b03;
@@ -119,14 +116,12 @@
       color: orange;
       font-size: 14px;
     }
-    /* Progress-Label */
     .progress-label {
       text-align: center;
       font-size: 12px;
       margin-top: 5px;
     }
-    /* Optionale Labels für LED-Anzeigen */
-    .led-label, .rsi-label {
+    .led-label, .rsi-label, .crv-label {
       text-align: center;
       font-size: 10px;
       margin-top: 2px;
@@ -136,7 +131,7 @@
 <body>
   <!-- Countdown-Anzeige -->
   <div id="counter">Aktualisierung in: <span id="countdown">30</span>s</div>
-
+  
   <!-- Navigation und Menü -->
   <button id="menuToggle"><i data-feather="menu"></i></button>
   <nav id="navMenu" class="visible">
@@ -149,38 +144,34 @@
       <a href="#"><i data-feather="bell"></i> <span>Alarm</span></a>
     </div>
   </nav>
-
+  
   <!-- Grid für Asset-Kacheln -->
   <div class="asset-grid" id="assetGrid"></div>
   <!-- Alarm-Audio -->
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
-
-  <!-- Einbinden von Feather Icons -->
+  
   <script src="https://unpkg.com/feather-icons"></script>
   <script>
-    // Feather Icons initialisieren
+    // Initialisiere Feather Icons
     feather.replace();
-
-    // Navigation: Menü-Umschaltung
+    
+    // Navigation umschalten
     const menuToggle = document.getElementById("menuToggle");
     const navMenu = document.getElementById("navMenu");
     menuToggle.addEventListener("click", () => { navMenu.classList.toggle("visible"); });
-
-    // Watchlist der Symbole
+    
+    // Watchlist
     const watchlist = [
       "BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT",
       "ADAUSDT","DOTUSDT","LINKUSDT","AVAXUSDT",
       "DOGEUSDT","TRXUSDT","ARBUSDT","TRUMPUSDT"
     ];
-
-    // Globaler Status für das Monitoring
+    
+    // Globaler Status und Timer
     let monitoring = false;
-    let monitorInterval = null;
-    let countdownInterval = null;
-    let countdown = 30;
+    let monitorInterval = null, countdownInterval = null, countdown = 30;
     const countdownDisplay = document.getElementById("countdown");
-
-    // Umschalten des Monitorings (Scannen)
+    
     function toggleMonitoring() {
       if (!monitoring) {
         monitoring = true;
@@ -201,12 +192,10 @@
         dashboardToggle.querySelector("span").textContent = "Scannen";
       }
     }
-
-    // Event Listener für das Scannen
+    
     const dashboardToggle = document.getElementById("dashboardToggle");
     dashboardToggle.addEventListener("click", (e) => { e.preventDefault(); toggleMonitoring(); });
-
-    // Umschalten des Alarms
+    
     let alarmActive = false;
     const alarmToggle = document.getElementById("alarmToggle");
     alarmToggle.addEventListener("click", (e) => {
@@ -220,50 +209,38 @@
         alarmToggle.querySelector("span").textContent = "Alarm";
       }
     });
-
+    
     // API-Aufrufe und Hilfsfunktionen:
-
-    // Holt 24h-Daten inklusive 24h-Volumen von Binance
     async function fetchData(symbol) {
       const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
       const data = await res.json();
       return {
-        symbol: symbol,
+        symbol,
         price: parseFloat(data.lastPrice),
         change24h: parseFloat(data.priceChangePercent),
         volume24h: parseFloat(data.volume)
       };
     }
-
-    // Holt den 1h-Volumenwert
     async function fetchHourlyVolume(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=1`);
       const klines = await response.json();
       return parseFloat(klines[0][5]);
     }
-
-    // Berechnung des RSI anhand realer Daten (z.B. 15 1h-Kerzen; Standardperiode = 14)
     async function fetchRSI(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
       const klines = await response.json();
       const closes = klines.map(k => parseFloat(k[4]));
-      // Berechne Differenzen:
       let gains = 0, losses = 0;
-      // Benutze die ersten 14 Änderungen
       for (let i = 1; i < closes.length; i++) {
         const change = closes[i] - closes[i-1];
-        if (change > 0) gains += change;
-        else losses += Math.abs(change);
+        if (change > 0) gains += change; else losses += Math.abs(change);
       }
       const period = closes.length - 1;
       const avgGain = gains / period;
       const avgLoss = losses / period;
       let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      const rsi = 100 - (100 / (1 + rs));
-      return rsi;
+      return 100 - (100 / (1 + rs));
     }
-
-    // Berechnet EMA
     async function computeEMA(values, period) {
       const k = 2 / (period + 1);
       let ema = values[0];
@@ -272,8 +249,6 @@
       }
       return ema;
     }
-
-    // Holt den MACD-Wert
     async function fetchMACD(symbol) {
       const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
       const klines = await response.json();
@@ -283,8 +258,6 @@
       const ema26 = await computeEMA(closes, 26);
       return ema12 - ema26;
     }
-
-    // Berechnet den Entry-Wert anhand von Support-Level, ATR und RSI
     async function calculateEntry(symbol, data) {
       async function fetchSupportLevel(symbol) {
         const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`);
@@ -302,19 +275,42 @@
           const prevClose = parseFloat(klines[i-1][4]);
           return Math.max(high-low, Math.abs(high-prevClose), Math.abs(low-prevClose));
         });
-        return tr.reduce((sum, val) => sum+val, 0) / (tr.length - 1);
+        return tr.reduce((sum,val) => sum + val, 0) / (tr.length - 1);
       }
       const supportLevel = await fetchSupportLevel(symbol);
       const atr = await fetchATR(symbol);
       const rsi = await fetchRSI(symbol);
       let entry = supportLevel;
-      if (rsi < 30) {
-        entry = Math.min(entry, data.price - atr);
-      }
+      if (rsi < 30) { entry = Math.min(entry, data.price - atr); }
       return entry;
     }
-
-    // updateTiles: Aktualisiert alle Asset-Kacheln basierend auf aktuellen API-Daten
+    
+    // Funktion createCRVLedBar: Verwendet das Chance-Risiko-Verhältnis (CRV)
+    // CRV = (TP1 - Entry) / (Entry - SL)
+    // Optimal: CRV ≤ 2 (grün, voll gefüllt); zwischen 2 und 3: Anzeige nimmt ab und wechselt in Orange; ab 3: rot (0 Segmente)
+    function createCRVLedBar(crv) {
+      const segments = 8;
+      let ledsToLight = 0;
+      let color = "#28a745"; // Grün
+      const optimalCRV = 2, maxCRV = 3;
+      if (crv <= optimalCRV) {
+        ledsToLight = Math.floor((crv / optimalCRV) * segments);
+      } else if (crv < maxCRV) {
+        ledsToLight = Math.floor(segments * ((maxCRV - crv) / (maxCRV - optimalCRV)));
+        color = "#ff9900"; // Orange
+      } else {
+        ledsToLight = 0;
+        color = "#cc0000"; // Rot
+      }
+      let html = "";
+      for (let i = 0; i < segments; i++) {
+        html += `<div class="crv-segment" style="background-color: ${i < ledsToLight ? color : "#444"};"></div>`;
+      }
+      html += `<div class="crv-label">CRV</div>`;
+      return html;
+    }
+    
+    // updateTiles: Aktualisiert alle Asset-Kacheln
     async function updateTiles() {
       const tiles = document.querySelectorAll(".asset-tile");
       for (let i = 0; i < watchlist.length; i++) {
@@ -324,83 +320,70 @@
         const tp1 = entry * 1.015;
         const tp2 = entry * 1.03;
         const sl = entry * 0.985;
-        const crvRaw = (tp1 - entry) / (entry - sl);
+        const crv = (tp1 - entry) / (entry - sl);
         
         const macd = await fetchMACD(symbol);
-        let macdScore = 0;
-        let macdDisplay = "n/a";
+        let macdScore = 0, macdDisplay = "n/a";
         if (macd !== null) {
           macdScore = macd > 0 ? 1 : (macd < 0 ? -1 : 0);
           const macdColor = macd > 0 ? "#28a745" : (macd < 0 ? "#dc3545" : "#cccccc");
           macdDisplay = `<span style="color: ${macdColor}; font-weight: bold;">${macd.toFixed(2)}</span>`;
         }
-        const scoreValue = Math.round(crvRaw * 10 + macdScore);
-
+        const scoreValue = Math.round(crv * 10 + macdScore);
+        
         const tile = tiles[i];
         tile.querySelector(".price").textContent = `Preis: ${data.price.toFixed(2)}`;
         const volume1h = await fetchHourlyVolume(symbol);
         tile.querySelector(".volume-1h").textContent = `1h Volumen: ${volume1h.toFixed(2)}`;
         tile.querySelector(".volume-24h").textContent = `24h Volumen: ${data.volume24h.toFixed(2)}`;
-
-        if (tile.querySelector(".entry-price"))
-          tile.querySelector(".entry-price").textContent = entry.toFixed(2);
-        if (tile.querySelector(".tp1"))
-          tile.querySelector(".tp1").textContent = tp1.toFixed(2);
-        if (tile.querySelector(".tp2"))
-          tile.querySelector(".tp2").textContent = tp2.toFixed(2);
-        if (tile.querySelector(".sl"))
-          tile.querySelector(".sl").textContent = sl.toFixed(2);
-        if (tile.querySelector(".crv"))
-          tile.querySelector(".crv").textContent = crvRaw.toFixed(2);
-
+        if (tile.querySelector(".entry-price")) tile.querySelector(".entry-price").textContent = entry.toFixed(2);
+        if (tile.querySelector(".tp1")) tile.querySelector(".tp1").textContent = tp1.toFixed(2);
+        if (tile.querySelector(".tp2")) tile.querySelector(".tp2").textContent = tp2.toFixed(2);
+        if (tile.querySelector(".sl")) tile.querySelector(".sl").textContent = sl.toFixed(2);
+        if (tile.querySelector(".crv")) tile.querySelector(".crv").textContent = crv.toFixed(2);
         tile.querySelector(".score").innerHTML = `Score: ${scoreValue} (MACD: ${macdDisplay})`;
         
-        // RSI berechnen und LED aktualisieren (echte Daten)
+        // Behalte den RSI-Wert (optional)
         const currentRSI = await fetchRSI(symbol);
         tile.querySelector(".rsi-value").textContent = currentRSI.toFixed(0);
         if (tile.querySelector(".rsi-led-bar"))
           tile.querySelector(".rsi-led-bar").innerHTML = createRSILedBar(currentRSI);
-
-        // Richtungsanzeige: Short bei Preis unter Entry, Long ab Entry, TP erreicht wenn Preis ≥ tp1
+        
+        // CRV LED-Balken einsetzen
+        if (tile.querySelector(".crv-led-bar"))
+          tile.querySelector(".crv-led-bar").innerHTML = createCRVLedBar(crv);
+        
+        // Richtungsanzeige: Short (Preis < Entry), Long (zwischen Entry und TP1), TP erreicht (Preis ≥ TP1)
         const directionEl = tile.querySelector(".trade-direction");
         let direction = "Neutral";
-        if (data.price < entry) {
-          direction = '<i data-feather="arrow-down"></i> Short';
-        } else if (data.price >= entry && data.price < tp1) {
-          direction = '<i data-feather="arrow-up"></i> Long';
-        } else if (data.price >= tp1) {
-          direction = '<i data-feather="check"></i> TP erreicht';
-        }
+        if (data.price < entry) { direction = '<i data-feather="arrow-down"></i> Short'; }
+        else if (data.price >= entry && data.price < tp1) { direction = '<i data-feather="arrow-up"></i> Long'; }
+        else if (data.price >= tp1) { direction = '<i data-feather="check"></i> TP erreicht'; }
         directionEl.innerHTML = direction;
-        console.log(`Symbol: ${symbol} | Preis: ${data.price.toFixed(2)}, Entry: ${entry.toFixed(2)}, tp1: ${tp1.toFixed(2)} -> Direction: ${direction.replace(/<[^>]+>/g, '')}`);
+        console.log(`Symbol: ${symbol} | Preis: ${data.price.toFixed(2)}, Entry: ${entry.toFixed(2)}, tp1: ${tp1.toFixed(2)} -> ${direction.replace(/<[^>]+>/g, '')}`);
         feather.replace();
-
-        // LED-Logik: Fortschritt von Entry bis tp1 berechnen
+        
+        // LED-Logik für den Fortschritt von Entry bis TP1 (alt/zusätzlich)
         const ledSegments = tile.querySelectorAll(".segment");
-        const prog = Math.min(1, Math.max(0, (data.price - entry) / (tp1 - entry)));
+        const prog = Math.min(1, Math.max(0, (data.price - entry)/(tp1 - entry)));
         const ledsToLight = Math.floor(prog * ledSegments.length);
-        console.log(`Aktive Segmente für ${symbol}: ${ledsToLight} von ${ledSegments.length}`);
         ledSegments.forEach((seg, index) => {
-          seg.classList.remove("active", "final");
+          seg.classList.remove("active","final");
           if (index < ledsToLight) {
             seg.classList.add("active");
-            if (index === ledSegments.length - 1) { seg.classList.add("final"); }
+            if (index === ledSegments.length - 1) seg.classList.add("final");
           }
         });
-        // Aktualisiere das Progress-Label
         const progressLabel = tile.querySelector(".progress-label");
-        if (progressLabel) {
-          progressLabel.textContent = `Progress: ${Math.floor(prog * 100)}%`;
-        }
-
-        // Alarm-Logik: Preis zwischen Entry und 80% von tp1
-        const alarmThreshold = entry + (tp1 - entry) * 0.8;
-        if (!alarmFlags[symbol] && data.price >= entry && data.price < alarmThreshold) {
+        if (progressLabel) { progressLabel.textContent = `Progress: ${Math.floor(prog * 100)}%`; }
+        
+        // Alarm-Logik: Alarm wird ausgelöst, sobald der Kurs 99 % des Einstiegspreises erreicht (aber noch nicht den Entry übersteigt)
+        if (!alarmFlags[symbol] && data.price >= (entry * 0.99) && data.price < entry) {
           alarmFlags[symbol] = true;
           const audio = document.getElementById("alarmAudio");
           if (alarmToggle.classList.contains("active")) { audio.play(); }
         }
-
+        
         // Markiere Kachel, wenn Entry erreicht wurde
         if (data.price >= entry) {
           if (!tile.dataset.hasSignaled) {
@@ -414,8 +397,7 @@
         }
       }
     }
-
-    // buildTiles: Erstellt initial alle Asset-Kacheln inkl. LED-Anzeige und Labels
+    
     async function buildTiles() {
       assetGrid.innerHTML = "";
       for (const symbol of watchlist) {
@@ -442,20 +424,17 @@
             <div>CRV: <span class="crv">-</span></div>
             <div>RSI: <span class="rsi-value">${currentRSI.toFixed(0)}</span></div>
             <div class="rsi-led-bar">${createRSILedBar(currentRSI)}</div>
+            <div class="crv-led-bar"></div>
           </div>
         `;
         assetGrid.appendChild(tile);
       }
       feather.replace();
     }
-
-    // Initialer Aufruf zum Laden der Tiles
     buildTiles();
-    
-    // Container für Alarm-Flags (pro Asset)
     const alarmFlags = {};
-
-    // Funktion createRSILedBar: Erzeugt den LED-Balken für den RSI-Wert
+    
+    // Funktion createRSILedBar (optional, unverändert)
     function createRSILedBar(rsi) {
       let html = "";
       const segments = 8;
@@ -466,7 +445,6 @@
       for (let i = 0; i < segments; i++) {
         html += `<div class="rsi-segment" style="background-color: ${i < active ? color : "#444"};"></div>`;
       }
-      // Optional: Label unter dem LED-Balken
       html += `<div class="rsi-label">RSI</div>`;
       return html;
     }
