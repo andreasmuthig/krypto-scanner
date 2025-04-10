@@ -92,7 +92,6 @@
     // Initialisiere Feather Icons
     feather.replace();
 
-    // Funktion zum Abruf der 24h-Daten (Ticker) von Binance
     async function fetchData(symbol) {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
@@ -109,7 +108,6 @@
       }
     }
 
-    // Funktion zum Abruf des 1h-Volumens
     async function fetchHourlyVolume(symbol) {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=1`);
@@ -122,7 +120,6 @@
       }
     }
 
-    // Funktion zur Berechnung des RSI anhand der letzten 15 1h-Kerzen
     async function fetchRSI(symbol) {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
@@ -141,37 +138,31 @@
         return 100 - (100 / (1 + rs));
       } catch (error) {
         console.error(`Fehler beim Abruf des RSI für ${symbol}:`, error);
-        return 50; // Standardwert, falls Berechnung nicht möglich ist
+        return 50;
       }
     }
 
-    // Einfache Berechnung des Einstiegspreises (95% des aktuellen Preises)
     async function calculateEntry(symbol, data) {
       return data.price * 0.95;
     }
 
-    // Platzhalter für die MACD-Berechnung – vorerst statisch
     function getMACD() {
       return 0.00;
     }
 
-    // Aktualisiert oder erstellt ein Tile für ein bestimmtes Symbol
+    // Aktualisiert oder erstellt ein Tile für ein bestimmtes Symbol, ohne das gesamte Element zu ersetzen
     async function updateTileForSymbol(symbol) {
       const grid = document.getElementById("assetGrid");
-      // Suche nach einem existierenden Tile mit eindeutiger ID
       let tile = document.getElementById(`tile-${symbol}`);
       
-      // Starte alle API-Aufrufe parallel
+      // Parallel API-Aufrufe
       const [data, volume1h, rsi] = await Promise.all([
         fetchData(symbol),
         fetchHourlyVolume(symbol),
         fetchRSI(symbol)
       ]);
-      
-      // Wenn keine Ticker-Daten zurückgegeben werden, überspringe das Symbol
       if (!data) return;
-
-      // Berechnungen
+      
       const entry = await calculateEntry(symbol, data);
       const tp1 = entry * 1.015;
       const tp2 = entry * 1.03;
@@ -180,16 +171,17 @@
       const macd = getMACD();
       const score = Math.round(crv * 10);
       const displayName = symbol.replace("USDT", "");
-
-      // Existiert das Tile noch nicht, erstelle es
+      
       if (!tile) {
         tile = document.createElement("div");
         tile.className = "asset-tile";
         tile.id = `tile-${symbol}`;
+        // Optional: Zeige "Lade Daten..." an, bevor die Informationen geladen werden
+        tile.innerHTML = `<h2>${displayName}</h2><div>Lade Daten...</div>`;
         grid.appendChild(tile);
       }
       
-      // Aktualisiere den Inhalt des Tiles
+      // Aktualisieren des Inhalts ohne komplettes Neuzeichnen
       tile.innerHTML = `
         <h2>${displayName}</h2>
         <div>Preis: ${data.price.toFixed(2)}</div>
@@ -205,15 +197,11 @@
       `;
     }
 
-    // Aktualisiert alle Tiles in der Watchlist
     async function updateTiles() {
-      // Watchlist mit allen gewünschten Symbolen (nur gültige Handelspaare verwenden!)
       const watchlist = [
         "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
         "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
-        // "TRUMPUSDT" wäre ungültig – deshalb besser auslassen.
       ];
-      
       for (const symbol of watchlist) {
         try {
           await updateTileForSymbol(symbol);
@@ -223,10 +211,7 @@
       }
     }
 
-    // Initialer Aufruf zum Laden und Aktualisieren der Tiles
     updateTiles();
-
-    // Aktualisiere die Tiles alle 30 Sekunden
     setInterval(updateTiles, 30000);
   </script>
 </body>
