@@ -158,4 +158,71 @@
     // Aktualisiert oder erstellt ein Tile für ein bestimmtes Symbol
     async function updateTileForSymbol(symbol) {
       const grid = document.getElementById("assetGrid");
-      // Versuche
+      // Suche nach einem existierenden Tile mit eindeutiger ID
+      let tile = document.getElementById(`tile-${symbol}`);
+      
+      // Starte alle API-Aufrufe parallel
+      const [data, volume1h, rsi] = await Promise.all([
+        fetchData(symbol),
+        fetchHourlyVolume(symbol),
+        fetchRSI(symbol)
+      ]);
+      
+      // Wenn keine Ticker-Daten zurückgegeben werden, überspringe das Symbol
+      if (!data) return;
+
+      // Berechnungen
+      const entry = await calculateEntry(symbol, data);
+      const tp1 = entry * 1.015;
+      const tp2 = entry * 1.03;
+      const sl  = entry * 0.985;
+      const crv = (tp1 - entry) / (entry - sl);
+      const macd = getMACD();
+      const score = Math.round(crv * 10);
+      const displayName = symbol.replace("USDT", "");
+
+      // Existiert kein Tile, erstelle ein neues Element
+      if (!tile) {
+        tile = document.createElement("div");
+        tile.className = "asset-tile";
+        tile.id = `tile-${symbol}`;
+        grid.appendChild(tile);
+      }
+      
+      // Aktualisiere den Inhalt des Tiles
+      tile.innerHTML = `
+        <h2>${displayName}</h2>
+        <div>Preis: ${data.price.toFixed(2)}</div>
+        <div>1h Volumen: ${volume1h.toFixed(2)}</div>
+        <div>24h Volumen: ${data.volume24h.toFixed(2)}</div>
+        <div>Score: ${score} (MACD: ${macd.toFixed(2)})</div>
+        <div>Einstieg: ${entry.toFixed(2)}</div>
+        <div>TP1: ${tp1.toFixed(2)}</div>
+        <div>TP2: ${tp2.toFixed(2)}</div>
+        <div>SL: ${sl.toFixed(2)}</div>
+        <div>CRV: ${crv.toFixed(2)}</div>
+        <div>RSI: ${rsi.toFixed(0)}</div>
+      `;
+    }
+
+    // Aktualisiert alle Tiles in der Watchlist
+    async function updateTiles() {
+      // Verwende eine Watchlist mit gültigen Symbolen
+      const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT"];
+      for (const symbol of watchlist) {
+        try {
+          await updateTileForSymbol(symbol);
+        } catch (error) {
+          console.error(`Fehler beim Aktualisieren von ${symbol}:`, error);
+        }
+      }
+    }
+
+    // Initialer Aufruf zum Laden und Aktualisieren der Tiles
+    updateTiles();
+
+    // Aktualisiere die Tiles alle 30 Sekunden
+    setInterval(updateTiles, 30000);
+  </script>
+</body>
+</html>
