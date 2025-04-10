@@ -181,7 +181,7 @@
       const score = Math.round(crv * 10);
       const displayName = symbol.replace("USDT", "");
 
-      // Existiert kein Tile, erstelle ein neues Element
+      // Existiert das Tile noch nicht, erstelle es
       if (!tile) {
         tile = document.createElement("div");
         tile.className = "asset-tile";
@@ -207,8 +207,13 @@
 
     // Aktualisiert alle Tiles in der Watchlist
     async function updateTiles() {
-      // Verwende eine Watchlist mit gültigen Symbolen
-      const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT"];
+      // Watchlist mit allen gewünschten Symbolen (nur gültige Handelspaare verwenden!)
+      const watchlist = [
+        "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
+        "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
+        // "TRUMPUSDT" wäre ungültig – deshalb besser auslassen.
+      ];
+      
       for (const symbol of watchlist) {
         try {
           await updateTileForSymbol(symbol);
