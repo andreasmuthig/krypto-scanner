@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Monitor – Einheitliche Trade-Daten mit Fortschrittsbalken</title>
+  <title>Crypto Monitor – Trade-Daten mit Alarm & Fortschrittsbalken</title>
   <style>
     body {
       background-color: #121212;
@@ -40,8 +40,12 @@
       border-radius: 5px;
       transition: text-shadow 0.3s ease;
     }
-    #navMenu .menu-item:hover a {
-      text-shadow: 0 0 5px #666;
+    #navMenu .menu-item:hover a { 
+      text-shadow: 0 0 5px #666; 
+    }
+    /* Für den Alarm-Toggle */
+    #alarmToggle.active {
+      color: #28a745;
     }
     /* Asset Grid */
     .asset-grid {
@@ -69,11 +73,11 @@
       border-radius: 5px;
       overflow: hidden;
       margin: 10px 0;
-      height: 20px;
+      height: 10px; /* schmaler Balken */
     }
     .progress-bar {
       height: 100%;
-      width: 0%; /* Startwert: 0% */
+      width: 0%;
       transition: width 0.3s ease, background-color 0.3s ease;
     }
   </style>
@@ -91,6 +95,7 @@
       <a href="settings.html"><i data-feather="settings"></i> Einstellungen</a>
     </div>
     <div class="menu-item">
+      <!-- Alarm-Toggle: Klickbar, um Audio-Signal an/aus zu schalten -->
       <a href="#" id="alarmToggle"><i data-feather="bell"></i> Alarm</a>
     </div>
   </nav>
@@ -98,11 +103,27 @@
   <!-- Container für die Asset-Tiles -->
   <div class="asset-grid" id="assetGrid"></div>
 
+  <!-- Audio-Element: Die Datei alarm.mp3 wird abgespielt (Datei muss im gleichen Verzeichnis liegen) -->
+  <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
+
   <!-- Einbindung von Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
   <script>
     // Initialisiere Feather Icons
     feather.replace();
+
+    // Globaler Alarm-Status und Timer
+    let alarmEnabled = false;
+    const alarmLastPlayed = {}; // Speichert zuletzt gespielte Zeiten je Symbol
+    const alarmCooldown = 30000; // 30 Sekunden Cooldown
+
+    // Alarm-Toggle: Klick auf die Glocke schaltet das Audio-Signal an/aus
+    document.getElementById("alarmToggle").addEventListener("click", function(e) {
+      e.preventDefault();
+      alarmEnabled = !alarmEnabled;
+      this.classList.toggle("active", alarmEnabled);
+      console.log("Alarm ist jetzt", alarmEnabled ? "aktiv" : "inaktiv");
+    });
 
     // Definiere die Watchlist – alle gültigen Handelspaare in fester Reihenfolge
     const watchlist = [
@@ -118,26 +139,25 @@
         const tile = document.createElement("div");
         tile.className = "asset-tile";
         tile.id = `tile-${symbol}`;
-        // Platzhalter-Inhalt für ein konsistentes Layout
         tile.innerHTML = `<h2>${symbol.replace("USDT", "")}</h2><div>Lade Daten...</div>`;
         grid.appendChild(tile);
       });
     }
     preRenderTiles();
 
-    // Kombinierter WebSocket-Stream: Für alle Symbole Ticker-Daten (alle Symbole in Kleinbuchstaben)
+    // Kombinierter WebSocket-Stream: Für alle Symbole Ticker-Daten (alle in Kleinbuchstaben)
     const wsSymbols = watchlist.map(s => s.toLowerCase());
     const streamString = wsSymbols.map(s => `${s}@ticker`).join("/");
     const wsEndpoint = `wss://stream.binance.com:9443/stream?streams=${streamString}`;
     const ws = new WebSocket(wsEndpoint);
-
+    
     ws.onopen = () => {
       console.log("WebSocket verbunden:", wsEndpoint);
     };
 
     ws.onmessage = event => {
       const json = JSON.parse(event.data);
-      const data = json.data; // Format: { stream: "...", data: { ... } }
+      const data = json.data; // { stream: "btcusdt@ticker", data: { ... } }
       const symbol = data.s; // z.B. "BTCUSDT"
       updateTileViaWS(symbol, data);
     };
@@ -150,14 +170,13 @@
       console.log("WebSocket-Verbindung geschlossen");
     };
 
-    // Funktion zur Aktualisierung eines Tiles anhand der Ticker-Daten und Berechnung der Trade-Level-Daten
+    // Funktion zur Aktualisierung eines Tiles mit Trade-Level-Daten und Fortschrittsbalken
     function updateTileViaWS(symbol, data) {
       const tile = document.getElementById(`tile-${symbol}`);
       if (!tile) return;
       const displayName = symbol.replace("USDT", "");
       const currentPrice = parseFloat(data.c);
 
-      // Basisdaten aus dem Ticker
       let html = `
         <h2>${displayName}</h2>
         <div>Preis: ${currentPrice.toFixed(2)}</div>
@@ -165,44 +184,56 @@
         <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
       `;
 
-      // Relative Trade-Level-Berechnungen (Beispielwerte, die alle Währungen dynamisch abbilden)
-      const bestEntry = currentPrice * 0.98;    // 98% des aktuellen Preises
-      const tp2 = currentPrice * 1.05;          // 105% des aktuellen Preises
-      const sl = currentPrice * 0.97;           // 97% des aktuellen Preises
-      const safeTP1 = (tp2 + sl) / 2;           // Mittelwert aus TP2 und SL
+      // Relative Trade-Level-Berechnungen (relative Faktoren für jeden Coin)
+      const bestEntry = currentPrice * 0.98;  // Optimaler Einstieg: 98% des aktuellen Preises
+      const tp2 = currentPrice * 1.05;        // TP2: 105% des aktuellen Preises
+      const sl = currentPrice * 0.97;         // SL: 97% des aktuellen Preises
+      const safeTP1 = (tp2 + sl) / 2;         // Sicherer TP1 als Mittelwert
+      const rewardRisk = (tp2 - bestEntry) / (bestEntry - sl);
+      const entryDeviation = (currentPrice - bestEntry) / bestEntry;
+      const alpha = 2;  // Faktor zur Gewichtung der Abweichung
+      const tradeScore = rewardRisk - (alpha * entryDeviation);
       const crv = (safeTP1 - bestEntry) / (bestEntry - sl);
-      
-      // Berechnung des Fortschritts (z. B. wie nah ist der aktuelle Preis an TP2 relativ zum Bereich SL bis TP2)
+
+      // Fortschrittsanzeige: Anteil des aktuellen Preises im Bereich von SL bis TP2
       let progressPercent = ((currentPrice - sl) / (tp2 - sl)) * 100;
       progressPercent = Math.max(0, Math.min(progressPercent, 100));
 
-      // Füge Fortschrittsbalken hinzu (die ID wird pro Symbol gesetzt)
+      // Farbauswahl basierend auf tradeScore
+      let progressColor;
+      if (tradeScore >= 2) {
+        progressColor = "#28a745"; // grün: Trade attraktiv
+      } else if (tradeScore >= 1) {
+        progressColor = "#ffc107"; // gelb: Warnung, Trade noch ok
+      } else {
+        progressColor = "#dc3545"; // rot: Trade unattraktiv
+      }
+
       html += `
         <div class="progress-container">
-          <div class="progress-bar" id="progressBar-${symbol}"></div>
+          <div class="progress-bar" id="progressBar-${symbol}" style="width: ${progressPercent}%; background-color: ${progressColor};"></div>
         </div>
         <div>Best Entry: ${bestEntry.toFixed(2)}</div>
         <div>Sicherer TP1: ${safeTP1.toFixed(2)}</div>
         <div>TP2: ${tp2.toFixed(2)}</div>
         <div>SL: ${sl.toFixed(2)}</div>
         <div>CRV: ${crv.toFixed(2)}</div>
+        <div>Trade Score: ${tradeScore.toFixed(2)}</div>
       `;
 
-      // Asynchron den RSI abrufen und den kompletten Tile-Inhalt aktualisieren
+      // Alarm-Logik: Wenn der Trade-Score ≥2 ist (Trade attraktiv) und Alarm aktiviert ist,
+      // spiele ein Audiosignal ab, sofern nicht in den letzten 30 Sekunden bereits ein Alarm für dieses Symbol gespielt wurde.
+      if (alarmEnabled && tradeScore >= 2) {
+        const now = Date.now();
+        if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
+          document.getElementById("alarmAudio").play();
+          alarmLastPlayed[symbol] = now;
+        }
+      }
+
+      // Asynchron den RSI abrufen und den Tile-Inhalt final aktualisieren
       fetchRSI(symbol).then(rsiValue => {
         tile.innerHTML = html + `<div>RSI: ${rsiValue.toFixed(2)}</div>`;
-        
-        // Aktualisiere den Fortschrittsbalken
-        const progressBar = document.getElementById(`progressBar-${symbol}`);
-        progressBar.style.width = progressPercent + "%";
-        // Farbwechsel basierend auf Fortschritt: <50% Rot, 50-80% Gelb, >=80% Grün
-        if (progressPercent < 50) {
-          progressBar.style.backgroundColor = "#dc3545";
-        } else if (progressPercent < 80) {
-          progressBar.style.backgroundColor = "#ffc107";
-        } else {
-          progressBar.style.backgroundColor = "#28a745";
-        }
       });
     }
 
@@ -225,7 +256,7 @@
         return 100 - (100 / (1 + rs));
       } catch (error) {
         console.error(`Fehler beim Abruf des RSI für ${symbol}:`, error);
-        return 50; // Fallback-Wert
+        return 50;
       }
     }
   </script>
