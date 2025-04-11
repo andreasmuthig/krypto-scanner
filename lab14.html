@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Monitor – Dashboard mit Trade-Levels</title>
+  <title>Crypto Monitor – Fixes Dashboard</title>
   <style>
     body {
       background-color: #121212;
@@ -56,6 +56,8 @@
       padding: 15px;
       font-size: 14px;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      /* Optional: feste Höhe, damit sich die Tiles nicht verschieben */
+      min-height: 150px;
     }
     .asset-tile h2 {
       margin-bottom: 10px;
@@ -89,19 +91,34 @@
     // Initialisiere Feather Icons
     feather.replace();
 
-    // Definiere die Watchlist – bitte verwende nur gültige Handelspaare.
+    // Watchlist – in fester Reihenfolge (nur gültige Handelspaare)
     const watchlist = [
       "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
       "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
     ];
+
+    // Pre-Render der Tiles in fester Reihenfolge
+    function preRenderTiles() {
+      const grid = document.getElementById("assetGrid");
+      grid.innerHTML = ""; // Container leeren
+      watchlist.forEach(symbol => {
+        const tile = document.createElement("div");
+        tile.className = "asset-tile";
+        // ID wird als "tile-<Symbol>" festgelegt
+        tile.id = `tile-${symbol}`;
+        // Optionale Platzhalter-Inhalte, damit das Layout passt:
+        tile.innerHTML = `<h2>${symbol.replace("USDT", "")}</h2><div>Lade Daten...</div>`;
+        grid.appendChild(tile);
+      });
+    }
     
-    // Für den WebSocket müssen die Symbole in Kleinbuchstaben vorliegen:
+    // Pre-Render einmal beim Laden der Seite
+    preRenderTiles();
+
+    // Kombinierter WebSocket-Stream für Ticker-Daten
     const wsSymbols = watchlist.map(s => s.toLowerCase());
-    // Kombinierter Stream für den Ticker (für jedes Symbol der "@ticker" Stream)
     const streamString = wsSymbols.map(s => `${s}@ticker`).join("/");
     const wsEndpoint = `wss://stream.binance.com:9443/stream?streams=${streamString}`;
-
-    // Öffne die WebSocket-Verbindung
     const ws = new WebSocket(wsEndpoint);
     
     ws.onopen = () => {
@@ -110,7 +127,6 @@
 
     ws.onmessage = event => {
       const json = JSON.parse(event.data);
-      // Das Format: { stream: "btcusdt@ticker", data: { ... } }
       const data = json.data;      
       const symbol = data.s; // z. B. "BTCUSDT"
       updateTileViaWS(symbol, data);
@@ -122,45 +138,29 @@
 
     ws.onclose = () => {
       console.log("WebSocket-Verbindung geschlossen");
-      // Hier könntest du ggf. einen Reconnect-Mechanismus einbauen.
     };
 
-    // Die Funktion updateTileViaWS aktualisiert jedes Tile anhand der WebSocket-Daten.
-    // Für BTCUSDT erweitern wir das Tile um Trade-Level-Informationen.
+    // Aktualisiert den Inhalt eines Tiles anhand der WebSocket-Ticker-Daten
     function updateTileViaWS(symbol, data) {
-      let tile = document.getElementById(`tile-${symbol}`);
-      const displayName = symbol.replace("USDT", "");
-      
-      // Falls das Tile noch nicht existiert, erstellen wir es.
-      if (!tile) {
-        tile = document.createElement("div");
-        tile.className = "asset-tile";
-        tile.id = `tile-${symbol}`;
-        document.getElementById("assetGrid").appendChild(tile);
-      }
-      
-      // Standardupdate für alle Symbole: Preis, 24h Veränderung und Volumen aus dem Ticker:
+      const tile = document.getElementById(`tile-${symbol}`);
+      if (!tile) return; // Falls kein vordefiniertes Tile vorhanden, (sollte nicht passieren)
       let html = `
-        <h2>${displayName}</h2>
+        <h2>${symbol.replace("USDT", "")}</h2>
         <div>Preis: ${parseFloat(data.c).toFixed(2)}</div>
         <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
         <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
       `;
       
-      // Für BTCUSDT erweitern wir das Tile mit zusätzlichen Trade-Level-Informationen:
+      // Beispiel: Zusätzliche Trade-Level-Daten – hier zunächst für BTCUSDT
+      // Wenn du für alle ähnliche Daten möchtest, musst du entsprechende Berechnungen definieren.
       if (symbol === "BTCUSDT") {
-        // Feste Werte:
         const fixedTP2 = 81900.46;
         const fixedSL = 78322.28;
-        // Sicherer TP1: als Durchschnitt aus TP2 und SL (dies ist ein Beispiel)
         const safeTP1 = (fixedTP2 + fixedSL) / 2;
-        // Potenziell bester Einstieg: beispielhaft 98% des aktuellen Preises
         const currentPrice = parseFloat(data.c);
         const bestEntry = currentPrice * 0.98;
-        // CRV-Range: (safeTP1 - bestEntry) / (bestEntry - fixedSL)
         const crv = (safeTP1 - bestEntry) / (bestEntry - fixedSL);
-        
-        // Asynchron RSI abrufen: Wir nutzen fetchRSI (siehe unten)
+        // Hole den RSI asynchron und aktualisiere den Inhalt, wenn er verfügbar ist
         fetchRSI("BTCUSDT").then(rsiValue => {
           tile.innerHTML = html + `
             <div>Best Entry: ${bestEntry.toFixed(2)}</div>
@@ -172,12 +172,12 @@
           `;
         });
       } else {
-        // Für alle anderen Symbole nur das Standardupdate.
+        // Für andere Symbole wird nur der Standardinhalt angezeigt.
         tile.innerHTML = html;
       }
     }
 
-    // Funktion zur Berechnung des RSI anhand der letzten 15 1h-Kerzen
+    // Funktion zur Berechnung des RSI aus den letzten 15 1h-Kerzen
     async function fetchRSI(symbol) {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
