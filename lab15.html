@@ -38,14 +38,16 @@
       text-decoration: none;
       padding: 5px 10px;
       border-radius: 5px;
-      transition: text-shadow 0.3s ease;
+      transition: all 0.3s ease;
     }
     #navMenu .menu-item:hover a { 
       text-shadow: 0 0 5px #666; 
     }
-    /* Für den Alarm-Toggle */
+    /* Alarm-Toggle: Wenn aktiviert, leuchtet die Glocke mit einem grünen Glow */
     #alarmToggle.active {
-      color: #28a745;
+      color: #28a745 !important;
+      background-color: rgba(40, 167, 69, 0.2);
+      box-shadow: 0 0 8px rgba(40, 167, 69, 0.8);
     }
     /* Asset Grid */
     .asset-grid {
@@ -95,7 +97,7 @@
       <a href="settings.html"><i data-feather="settings"></i> Einstellungen</a>
     </div>
     <div class="menu-item">
-      <!-- Alarm-Toggle: Klickbar, um Audio-Signal an/aus zu schalten -->
+      <!-- Alarm-Toggle: Klickbar, um das Audiosignal zu aktivieren/deaktivieren -->
       <a href="#" id="alarmToggle"><i data-feather="bell"></i> Alarm</a>
     </div>
   </nav>
@@ -103,7 +105,7 @@
   <!-- Container für die Asset-Tiles -->
   <div class="asset-grid" id="assetGrid"></div>
 
-  <!-- Audio-Element: Die Datei alarm.mp3 wird abgespielt (Datei muss im gleichen Verzeichnis liegen) -->
+  <!-- Audio-Element (Datei alarm.mp3 muss im selben Verzeichnis liegen) -->
   <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
 
   <!-- Einbindung von Feather Icons -->
@@ -114,10 +116,10 @@
 
     // Globaler Alarm-Status und Timer
     let alarmEnabled = false;
-    const alarmLastPlayed = {}; // Speichert zuletzt gespielte Zeiten je Symbol
+    const alarmLastPlayed = {}; // Speichert zuletzt gespielte Zeiten pro Symbol
     const alarmCooldown = 30000; // 30 Sekunden Cooldown
 
-    // Alarm-Toggle: Klick auf die Glocke schaltet das Audio-Signal an/aus
+    // Alarm-Toggle: Klick auf den Alarm-Button schaltet das Audio-Signal an/aus
     document.getElementById("alarmToggle").addEventListener("click", function(e) {
       e.preventDefault();
       alarmEnabled = !alarmEnabled;
@@ -157,7 +159,7 @@
 
     ws.onmessage = event => {
       const json = JSON.parse(event.data);
-      const data = json.data; // { stream: "btcusdt@ticker", data: { ... } }
+      const data = json.data; // Beispiel: { stream: "btcusdt@ticker", data: { ... } }
       const symbol = data.s; // z.B. "BTCUSDT"
       updateTileViaWS(symbol, data);
     };
@@ -170,7 +172,7 @@
       console.log("WebSocket-Verbindung geschlossen");
     };
 
-    // Funktion zur Aktualisierung eines Tiles mit Trade-Level-Daten und Fortschrittsbalken
+    // Aktualisiert den Inhalt eines Tiles anhand der Ticker-Daten und Trade-Level-Berechnungen
     function updateTileViaWS(symbol, data) {
       const tile = document.getElementById(`tile-${symbol}`);
       if (!tile) return;
@@ -184,29 +186,29 @@
         <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
       `;
 
-      // Relative Trade-Level-Berechnungen (relative Faktoren für jeden Coin)
-      const bestEntry = currentPrice * 0.98;  // Optimaler Einstieg: 98% des aktuellen Preises
-      const tp2 = currentPrice * 1.05;        // TP2: 105% des aktuellen Preises
-      const sl = currentPrice * 0.97;         // SL: 97% des aktuellen Preises
-      const safeTP1 = (tp2 + sl) / 2;         // Sicherer TP1 als Mittelwert
+      // Relative Trade-Level-Berechnungen
+      const bestEntry = currentPrice * 0.98;   // Optimaler Einstieg: 98% des aktuellen Preises
+      const tp2 = currentPrice * 1.05;         // TP2: 105% des aktuellen Preises
+      const sl = currentPrice * 0.97;          // SL: 97% des aktuellen Preises
+      const safeTP1 = (tp2 + sl) / 2;          // Sicherer TP1 als Mittelwert
       const rewardRisk = (tp2 - bestEntry) / (bestEntry - sl);
       const entryDeviation = (currentPrice - bestEntry) / bestEntry;
-      const alpha = 2;  // Faktor zur Gewichtung der Abweichung
+      const alpha = 2;
       const tradeScore = rewardRisk - (alpha * entryDeviation);
       const crv = (safeTP1 - bestEntry) / (bestEntry - sl);
 
-      // Fortschrittsanzeige: Anteil des aktuellen Preises im Bereich von SL bis TP2
+      // Fortschrittsanzeige: Berechnung des Prozentsatzes zwischen SL und TP2
       let progressPercent = ((currentPrice - sl) / (tp2 - sl)) * 100;
       progressPercent = Math.max(0, Math.min(progressPercent, 100));
 
-      // Farbauswahl basierend auf tradeScore
+      // Auswahl der Farbe des Fortschrittsbalkens basierend auf dem Trade-Score:
       let progressColor;
       if (tradeScore >= 2) {
-        progressColor = "#28a745"; // grün: Trade attraktiv
+        progressColor = "#28a745"; // Grün: Trade attraktiv
       } else if (tradeScore >= 1) {
-        progressColor = "#ffc107"; // gelb: Warnung, Trade noch ok
+        progressColor = "#ffc107"; // Gelb: Warnung, Trade noch ok
       } else {
-        progressColor = "#dc3545"; // rot: Trade unattraktiv
+        progressColor = "#dc3545"; // Rot: Trade unattraktiv
       }
 
       html += `
@@ -221,8 +223,7 @@
         <div>Trade Score: ${tradeScore.toFixed(2)}</div>
       `;
 
-      // Alarm-Logik: Wenn der Trade-Score ≥2 ist (Trade attraktiv) und Alarm aktiviert ist,
-      // spiele ein Audiosignal ab, sofern nicht in den letzten 30 Sekunden bereits ein Alarm für dieses Symbol gespielt wurde.
+      // Alarm-Logik: Wenn Trade Score ≥ 2 und Alarm aktiviert ist, spiele das Audio-Signal ab (mit Cooldown)
       if (alarmEnabled && tradeScore >= 2) {
         const now = Date.now();
         if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
@@ -231,13 +232,13 @@
         }
       }
 
-      // Asynchron den RSI abrufen und den Tile-Inhalt final aktualisieren
+      // Asynchron den RSI abrufen und den finalen Inhalt des Tiles aktualisieren
       fetchRSI(symbol).then(rsiValue => {
         tile.innerHTML = html + `<div>RSI: ${rsiValue.toFixed(2)}</div>`;
       });
     }
 
-    // Funktion zur Berechnung des RSI anhand der letzten 15 1h-Kerzen
+    // Berechnet den RSI anhand der letzten 15 1h-Kerzen
     async function fetchRSI(symbol) {
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
@@ -256,7 +257,7 @@
         return 100 - (100 / (1 + rs));
       } catch (error) {
         console.error(`Fehler beim Abruf des RSI für ${symbol}:`, error);
-        return 50;
+        return 50; // Fallback
       }
     }
   </script>
