@@ -120,6 +120,9 @@
       alarmEnabled = !alarmEnabled;
       this.classList.toggle("active", alarmEnabled);
       console.log("Alarm ist jetzt", alarmEnabled ? "aktiv" : "inaktiv");
+      if (alarmEnabled) {
+        document.getElementById("alarmAudio").play(); // Sofortiges Abspielen bei Aktivierung
+      }
     });
 
     // Definiere die Watchlist – alle gültigen Handelspaare in fester Reihenfolge
@@ -231,7 +234,7 @@
 
       // Gleichzeitiges Abrufen von historischen Daten und RSI
       const [historicalPrices, rsiValue] = await Promise.all([
-        fetchHistoricalKlines("XRPUSDT", "1h", 30),
+        fetchHistoricalKlines(symbol, "1h", 30),
         fetchRSI(symbol)
       ]);
 
