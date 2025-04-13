@@ -230,108 +230,96 @@
 
         // Aktualisiert den Inhalt eines Tiles anhand der Ticker-Daten und Trade-Level-Berechnungen
         async function updateTileViaWS(symbol, data) {
+            const tile = document.getElementById(`tile-${symbol}`);
+            if (!tile) return;
+            const displayName = symbol.replace("USDT", "");
+            const currentPrice = parseFloat(data.c);
+
+            let html = `
+                <h2>${displayName}</h2>
+                <div>Preis: ${currentPrice.toFixed(2)}</div>
+                <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
+                <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
+                <div>MACD: Lädt...</div>
+                <div>Signal: Lädt...</div>
+            `;
+
+            // "Best Entry" basierend auf den letzten Tiefstkursen
+            let bestEntry = "Lädt...";
+            if (lastLows[symbol] && lastLows[symbol].length > 0) {
+                const lowestLow = Math.min(...lastLows[symbol]);
+                bestEntry = (lowestLow * bestEntryPuffer).toFixed(2);
+            }
+
+            const tp2 = currentPrice * 1.05;
+            const sl = currentPrice * 0.97;
+            const safeTP1 = (tp2 + sl) / 2;
+            const rewardRisk = (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
+            const entryDeviation = (currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry);
+            const alpha = 2;
+            const tradeScore = rewardRisk - (alpha * entryDeviation);
+            const crv = (safeTP1 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
+
+            // Fortschrittsanzeige: Berechnung des Prozentsatzes zwischen SL und TP2
+            let progressPercent = ((currentPrice - sl) / (tp2 - sl)) * 100;
+            progressPercent = Math.max(0, Math.min(progressPercent, 100));
+
+            // Auswahl der Farbe des Fortschrittsbalkens basierend auf dem Trade-Score:
+            let progressColor;
+            if (tradeScore >= 2) {
+                progressColor = "#28a745"; // Grün: Trade attraktiv
+            } else if (tradeScore >= 1) {
+                progressColor = "#ffc107"; // Gelb: Warnung, Trade noch ok
+            } else {
+                progressColor = "#dc3545"; // Rot: Trade unattraktiv
+            }
+
+            html += `
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar-${symbol}" style="width: ${progressPercent}%; background-color: ${progressColor};"></div>
+                </div>
+                <div>Best Entry: ${bestEntry}</div>
+                <div>Sicherer TP1: ${safeTP1.toFixed(2)}</div>
+                <div>TP2: ${tp2.toFixed(2)}</div>
+                <div>SL: ${sl.toFixed(2)}</div>
+                <div>CRV: ${crv.toFixed(2)}</div>
+                <div>Trade Score: Lädt...</div>
+                <div>RSI: Lädt...</div>
+            `;
+
+            tile.innerHTML = html;
+
             const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
-                const tile = document.getElementById(`tile-${symbol}`);
-                if (!tile) return;
-                const displayName = symbol.replace("USDT", "");
-                const currentPrice = parseFloat(data.c);
-
-                // Gleichzeitiges Abrufen von historischen Daten und RSI
-                Promise.all([
-                    fetchHistoricalKlines(symbol, "1h", 28), // Reduzierte Anzahl für MACD
-                    fetchRSI(symbol)
-                ]).then(([historicalPrices, rsiValue]) => {
-                    const macdData = calculateMACD(historicalPrices);
-
-                    let html = `
-                        <h2>${displayName}</h2>
-                        <div>Preis: ${currentPrice.toFixed(2)}</div>
-                        <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
-                        <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
-                        <div>MACD: ${macdData.macd}</div>
-                        <div>Signal: ${macdData.signal}</div>
-                    `;
-
-                    // "Best Entry" basierend auf den letzten Tiefstkursen
-                    let bestEntry = "Lädt...";
-                    if (lastLows[symbol] && lastLows[symbol].length > 0) {
-                        const lowestLow = Math.min(...lastLows[symbol]);
-                        bestEntry = (lowestLow * bestEntryPuffer).toFixed(2);
-                    }
-
-                    const tp2 = currentPrice * 1.05;
-                    const sl = currentPrice * 0.97;
-                    const safeTP1 = (tp2 + sl) / 2;
-                    const rewardRisk = (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
-                    const entryDeviation = (currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry);
-                    const alpha = 2;
-                    const tradeScore = rewardRisk - (alpha * entryDeviation);
-                    const crv = (safeTP1 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
-
-                    // Fortschrittsanzeige: Berechnung des Prozentsatzes zwischen SL und TP2
-                    let progressPercent = ((currentPrice - sl) / (tp2 - sl)) * 100;
-                    progressPercent = Math.max(0, Math.min(progressPercent, 100));
-
-                    // Auswahl der Farbe des Fortschrittsbalkens basierend auf dem Trade-Score:
-                    let progressColor;
-                    if (tradeScore >= 2) {
-                        progressColor = "#28a745"; // Grün: Trade attraktiv
-                    } else if (tradeScore >= 1) {
-                        progressColor = "#ffc107"; // Gelb: Warnung, Trade noch ok
-                    } else {
-                        progressColor = "#dc3545"; // Rot: Trade unattraktiv
-                    }
-
-                    html += `
-                        <div class="progress-container">
-                            <div class="progress-bar" id="progressBar-${symbol}" style="width: ${progressPercent}%; background-color: ${progressColor};"></div>
-                        </div>
-                        <div>Best Entry: ${bestEntry}</div>
-                        <div>Sicherer TP1: ${safeTP1.toFixed(2)}</div>
-                        <div>TP2: ${tp2.toFixed(2)}</div>
-                        <div>SL: ${sl.toFixed(2)}</div>
-                        <div>CRV: ${crv.toFixed(2)}</div>
-                        <div>Trade Score: ${tradeScore.toFixed(2)}</div>
-                        <div>RSI: ${rsiValue.toFixed(2)}</div>
-                    `;
-
-                    // Alarm-Logik: Wenn Trade Score ≥ 2 und Alarm aktiviert ist, spiele das Audio-Signal ab (mit Cooldown)
-                    if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
-                        const now = Date.now();
-                        if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
-                            document.getElementById("alarmAudio").play();
-                            alarmLastPlayed[symbol] = now;
+                fetchHistoricalKlines(symbol, "1h", 28)
+                    .then(historicalPrices => {
+                        const macdData = calculateMACD(historicalPrices);
+                        const updatedTile = document.getElementById(`tile-${symbol}`);
+                        if (updatedTile && historicalPrices.length >= 26) { // Stelle sicher, dass genügend Daten vorhanden sind
+                            updatedTile.innerHTML = updatedTile.innerHTML.replace("MACD: Lädt...", `MACD: ${macdData.macd}`);
+                            updatedTile.innerHTML = updatedTile.innerHTML.replace("Signal: Lädt...", `Signal: ${macdData.signal}`);
+                        } else if (updatedTile) {
+                            updatedTile.innerHTML = updatedTile.innerHTML.replace("MACD: Lädt...", "MACD: n.a.");
+                            updatedTile.innerHTML = updatedTile.innerHTML.replace("Signal: Lädt...", "Signal: n.a.");
                         }
-                    }
+                    });
 
-                    tile.innerHTML = html;
-                });
-            } else {
-                // Aktualisiere nur Preis und 24h Veränderung bei schnellen Ticker-Updates
-                const tile = document.getElementById(`tile-${symbol}`);
-                if (tile) {
-                    const displayName = symbol.replace("USDT", "");
-                    const currentPrice = parseFloat(data.c);
-                    tile.innerHTML = `
-                        <h2>${displayName}</h2>
-                        <div>Preis: ${currentPrice.toFixed(2)}</div>
-                        <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
-                        <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
-                        <div>MACD: Lädt...</div>
-                        <div>Signal: Lädt...</div>
-                        <div class="progress-container">
-                            <div class="progress-bar" id="progressBar-${symbol}" style="width: 0%;"></div>
-                        </div>
-                        <div>Best Entry: Lädt...</div>
-                        <div>Sicherer TP1: Lädt...</div>
-                        <div>TP2: Lädt...</div>
-                        <div>SL: Lädt...</div>
-                        <div>CRV: Lädt...</div>
-                        <div>Trade Score: Lädt...</div>
-                        <div>RSI: Lädt...</div>
-                    `;
+                fetchRSI(symbol)
+                    .then(rsiValue => {
+                        const updatedTile = document.getElementById(`tile-${symbol}`);
+                        if (updatedTile) {
+                            updatedTile.innerHTML = updatedTile.innerHTML.replace("RSI: Lädt...", `RSI: ${rsiValue.toFixed(2)}`);
+                        }
+                    });
+            }
+
+            // Alarm-Logik (bleibt unverändert)
+            if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
+                const now = Date.now();
+                if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
+                    document.getElementById("alarmAudio").play();
+                    alarmLastPlayed[symbol] = now;
                 }
             }
         }
