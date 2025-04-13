@@ -189,19 +189,15 @@
     };
 
     async function fetchHistoricalKlines(symbol, interval, limit) {
-      console.log(`[${symbol}] Rufe historische Klines ab (${interval}, ${limit})...`);
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
         if (!res.ok) {
           throw new Error(`HTTP-Error: ${res.status}`);
         }
         const klines = await res.json();
-        const closePrices = klines.map(kline => parseFloat(kline[4]));
-        console.log(`[${symbol}] Historische Klines erfolgreich abgerufen. Anzahl: ${closePrices.length}`);
-        // console.log(`[${symbol}] Erste 5 Schlusskurse:`, closePrices.slice(0, 5)); // Optional: Zeige die ersten Kurse
-        return closePrices;
+        return klines.map(kline => parseFloat(kline[4]));
       } catch (error) {
-        console.error(`[${symbol}] Fehler beim Abruf der historischen Klines (${interval}, ${limit}):`, error);
+        console.error(`Fehler beim Abruf der historischen Klines für ${symbol} (${interval}, ${limit}):`, error);
         return [];
       }
     }
@@ -219,18 +215,14 @@
     }
 
     function calculateMACD(closePrices) {
-      console.log(`[MACD] Berechne MACD mit ${closePrices.length} Schlusskursen.`);
       if (closePrices.length < 26) {
-        console.log("[MACD] Nicht genügend Daten für die MACD-Berechnung.");
         return { macd: "n.a.", signal: "n.a." };
       }
       const ema12 = calculateEMA(closePrices.slice(-12), 12);
       const ema26 = calculateEMA(closePrices.slice(-26), 26);
       const macdLine = ema12 - ema26;
       const signalLine = calculateEMA(closePrices.slice(-21).concat([macdLine]), 9);
-      const result = { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
-      console.log("[MACD] Berechnung abgeschlossen:", result);
-      return result;
+      return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
     }
 
     // Aktualisiert den Inhalt eines Tiles anhand der Ticker-Daten und Trade-Level-Berechnungen
