@@ -231,7 +231,7 @@
 
       // Gleichzeitiges Abrufen von historischen Daten und RSI
       const [historicalPrices, rsiValue] = await Promise.all([
-        fetchHistoricalKlines(symbol, "1h", 30),
+        fetchHistoricalKlines("XRPUSDT", "1h", 30),
         fetchRSI(symbol)
       ]);
 
