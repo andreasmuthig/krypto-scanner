@@ -1,111 +1,4 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Monitor – Trade-Daten mit Alarm & Fortschrittsbalken</title>
-  <style>
-    body {
-      background-color: #121212;
-      color: #e0e0e0;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-    }
-    /* Navigation */
-    #navMenu {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 70px;
-      background: rgba(53,53,53,0.95);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1100;
-    }
-    #navMenu .menu-item {
-      margin: 0 15px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 16px;
-    }
-    #navMenu .menu-item a {
-      color: #e0e0e0;
-      text-decoration: none;
-      padding: 5px 10px;
-      border-radius: 5px;
-      transition: all 0.3s ease;
-    }
-    #navMenu .menu-item:hover a {
-      text-shadow: 0 0 5px #666;
-    }
-    /* Alarm-Toggle: Wenn aktiviert, leuchtet die Glocke mit einem grünen Glow */
-    #alarmToggle.active {
-      color: #28a745 !important;
-      background-color: rgba(40, 167, 69, 0.2);
-      box-shadow: 0 0 8px rgba(40, 167, 69, 0.8);
-    }
-    /* Asset Grid */
-    .asset-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-      gap: 20px;
-      margin-top: 100px; /* Platz für Navigation */
-    }
-    .asset-tile {
-      background: rgba(105,93,79,0.9);
-      border-radius: 8px;
-      padding: 15px;
-      font-size: 14px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      min-height: 220px; /* Erhöhte Mindesthöhe für MACD */
-    }
-    .asset-tile h2 {
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    /* Fortschrittsbalken */
-    .progress-container {
-      width: 100%;
-      background-color: #333;
-      border-radius: 5px;
-      overflow: hidden;
-      margin: 10px 0;
-      height: 10px; /* schmaler Balken */
-    }
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      transition: width 0.3s ease, background-color 0.3s ease;
-    }
-  </style>
-</head>
-<body>
-  <nav id="navMenu">
-    <div class="menu-item">
-      <a href="index.html"><i data-feather="home"></i> Home</a>
-    </div>
-    <div class="menu-item">
-      <a href="#" id="dashboardToggle"><i data-feather="activity"></i> Scannen</a>
-    </div>
-    <div class="menu-item">
-      <a href="settings.html"><i data-feather="settings"></i> Einstellungen</a>
-    </div>
-    <div class="menu-item">
-      <a href="#" id="alarmToggle"><i data-feather="bell"></i> Alarm</a>
-    </div>
-  </nav>
-
-  <div class="asset-grid" id="assetGrid"></div>
-
-  <audio id="alarmAudio" src="alarm.mp3" preload="auto"></audio>
-
-  <script src="https://unpkg.com/feather-icons"></script>
-  <script>
+<script>
     // Initialisiere Feather Icons
     feather.replace();
 
@@ -189,15 +82,19 @@
     };
 
     async function fetchHistoricalKlines(symbol, interval, limit) {
+      console.log(`[${symbol}] Rufe historische Klines ab (${interval}, ${limit})...`);
       try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
         if (!res.ok) {
           throw new Error(`HTTP-Error: ${res.status}`);
         }
         const klines = await res.json();
-        return klines.map(kline => parseFloat(kline[4]));
+        const closePrices = klines.map(kline => parseFloat(kline[4]));
+        console.log(`[${symbol}] Historische Klines erfolgreich abgerufen. Anzahl: ${closePrices.length}`);
+        // console.log(`[${symbol}] Erste 5 Schlusskurse:`, closePrices.slice(0, 5)); // Optional: Zeige die ersten Kurse
+        return closePrices;
       } catch (error) {
-        console.error(`Fehler beim Abruf der historischen Klines für ${symbol} (${interval}, ${limit}):`, error);
+        console.error(`[${symbol}] Fehler beim Abruf der historischen Klines (${interval}, ${limit}):`, error);
         return [];
       }
     }
@@ -215,14 +112,18 @@
     }
 
     function calculateMACD(closePrices) {
+      console.log(`[MACD] Berechne MACD mit ${closePrices.length} Schlusskursen.`);
       if (closePrices.length < 26) {
+        console.log("[MACD] Nicht genügend Daten für die MACD-Berechnung.");
         return { macd: "n.a.", signal: "n.a." };
       }
       const ema12 = calculateEMA(closePrices.slice(-12), 12);
       const ema26 = calculateEMA(closePrices.slice(-26), 26);
       const macdLine = ema12 - ema26;
-      const signalLine = calculateEMA(closePrices.slice(-21).concat([macdLine]), 9); // Wir benötigen ca. 9 MACD-Werte für die Signallinie
-      return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
+      const signalLine = calculateEMA(closePrices.slice(-21).concat([macdLine]), 9);
+      const result = { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
+      console.log("[MACD] Berechnung abgeschlossen:", result);
+      return result;
     }
 
     // Aktualisiert den Inhalt eines Tiles anhand der Ticker-Daten und Trade-Level-Berechnungen
@@ -327,5 +228,3 @@
       }
     }
   </script>
-</body>
-</html>
