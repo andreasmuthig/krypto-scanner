@@ -1,0 +1,217 @@
+<script>
+    // Initialisiere Feather Icons
+    feather.replace();
+
+    // Globaler Alarm-Status und Timer
+    let alarmEnabled = false;
+    const alarmLastPlayed = {}; // Speichert zuletzt gespielte Zeiten pro Symbol
+    const alarmCooldown = 30000; // 30 Sekunden Cooldown
+
+    // Alarm-Toggle: Klick auf den Alarm-Button schaltet das Audio-Signal an/aus
+    document.getElementById("alarmToggle").addEventListener("click", function(e) {
+      e.preventDefault();
+      alarmEnabled = !alarmEnabled;
+      this.classList.toggle("active", alarmEnabled);
+      console.log("Alarm ist jetzt", alarmEnabled ? "aktiv" : "inaktiv");
+    });
+
+    // Definiere die Watchlist – alle gültigen Handelspaare in fester Reihenfolge
+    const watchlist = [
+      "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
+      "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
+    ];
+
+    // Pre-Render aller Tiles: Feste Reihenfolge gewährleisten
+    function preRenderTiles() {
+      const grid = document.getElementById("assetGrid");
+      grid.innerHTML = "";
+      watchlist.forEach(symbol => {
+        const tile = document.createElement("div");
+        tile.className = "asset-tile";
+        tile.id = `tile-${symbol}`;
+        tile.innerHTML = `<h2>${symbol.replace("USDT", "")}</h2><div>Lade Daten...</div>`;
+        grid.appendChild(tile);
+      });
+    }
+    preRenderTiles();
+
+    // Datenstruktur für die letzten Tiefstkurse
+    const lastLows = {};
+    const lowHistorySize = 5; // Wir speichern die letzten 5 Tiefstkurse
+    const bestEntryPuffer = 0.99; // 1% Puffer unter dem niedrigsten Tief
+
+    // Kombinierter WebSocket-Stream: Für alle Symbole Ticker-Daten (alle in Kleinbuchstaben)
+    const wsSymbols = watchlist.map(s => s.toLowerCase());
+    const streamString = wsSymbols.map(s => `${s}@ticker`).join("/");
+    const wsEndpoint = `wss://stream.binance.com:9443/stream?streams=${streamString}`;
+    const ws = new WebSocket(wsEndpoint);
+
+    ws.onopen = () => {
+      console.log("WebSocket verbunden:", wsEndpoint);
+      // Initialisiere die lastLows-Struktur für jedes Symbol
+      watchlist.forEach(symbol => {
+        lastLows[symbol] = [];
+      });
+    };
+
+    ws.onmessage = event => {
+      const json = JSON.parse(event.data);
+      const data = json.data;
+      const symbol = data.s;
+
+      // Aktualisiere die Liste der letzten Tiefstkurse
+      if (data.l) {
+        lastLows[symbol].push(parseFloat(data.l));
+        if (lastLows[symbol].length > lowHistorySize) {
+          lastLows[symbol].shift(); // Entferne den ältesten Eintrag
+        }
+      }
+
+      updateTileViaWS(symbol, data);
+    };
+
+    ws.onerror = error => {
+      console.error("WebSocket-Fehler:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket-Verbindung geschlossen");
+    };
+
+    async function fetchHistoricalKlines(symbol, interval, limit) {
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+        if (!res.ok) {
+          throw new Error(`HTTP-Error: ${res.status}`);
+        }
+        const klines = await res.json();
+        return klines.map(kline => parseFloat(kline[4]));
+      } catch (error) {
+        console.error(`Fehler beim Abruf der historischen Klines für ${symbol} (${interval}, ${limit}):`, error);
+        return [];
+      }
+    }
+
+    function calculateEMA(prices, period) {
+      if (!prices || prices.length === 0) return 0;
+      let ema = [];
+      let multiplier = 2 / (period + 1);
+      ema[0] = prices[0];
+
+      for (let i = 1; i < prices.length; i++) {
+        ema[i] = (prices[i] - ema[i - 1]) * multiplier + ema[i - 1];
+      }
+      return ema[prices.length - 1];
+    }
+
+    function calculateMACD(closePrices) {
+      if (closePrices.length < 26) {
+        return { macd: "n.a.", signal: "n.a." };
+      }
+      const ema12 = calculateEMA(closePrices.slice(-12), 12);
+      const ema26 = calculateEMA(closePrices.slice(-26), 26);
+      const macdLine = ema12 - ema26;
+      const signalLine = calculateEMA(closePrices.slice(-21).concat([macdLine]), 9); // Wir benötigen ca. 9 MACD-Werte für die Signallinie
+      return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
+    }
+
+    // Aktualisiert den Inhalt eines Tiles anhand der Ticker-Daten und Trade-Level-Berechnungen
+    async function updateTileViaWS(symbol, data) {
+      const tile = document.getElementById(`tile-${symbol}`);
+      if (!tile) return;
+      const displayName = symbol.replace("USDT", "");
+      const currentPrice = parseFloat(data.c);
+
+      // Abrufen historischer Daten und Berechnen des MACD
+      const historicalPrices = await fetchHistoricalKlines(symbol, "1h", 30);
+      const macdData = calculateMACD(historicalPrices);
+
+      let html = `
+        <h2>${displayName}</h2>
+        <div>Preis: ${currentPrice.toFixed(2)}</div>
+        <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
+        <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
+        <div>MACD: ${macdData.macd}</div>
+        <div>Signal: ${macdData.signal}</div>
+      `;
+
+      // "Best Entry" basierend auf den letzten Tiefstkursen
+      let bestEntry = "Lädt...";
+      if (lastLows[symbol] && lastLows[symbol].length > 0) {
+        const lowestLow = Math.min(...lastLows[symbol]);
+        bestEntry = (lowestLow * bestEntryPuffer).toFixed(2);
+      }
+
+      const tp2 = currentPrice * 1.05;
+      const sl = currentPrice * 0.97;
+      const safeTP1 = (tp2 + sl) / 2;
+      const rewardRisk = (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
+      const entryDeviation = (currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry);
+      const alpha = 2;
+      const tradeScore = rewardRisk - (alpha * entryDeviation);
+      const crv = (safeTP1 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
+
+      // Fortschrittsanzeige: Berechnung des Prozentsatzes zwischen SL und TP2
+      let progressPercent = ((currentPrice - sl) / (tp2 - sl)) * 100;
+      progressPercent = Math.max(0, Math.min(progressPercent, 100));
+
+      // Auswahl der Farbe des Fortschrittsbalkens basierend auf dem Trade-Score:
+      let progressColor;
+      if (tradeScore >= 2) {
+        progressColor = "#28a745"; // Grün: Trade attraktiv
+      } else if (tradeScore >= 1) {
+        progressColor = "#ffc107"; // Gelb: Warnung, Trade noch ok
+      } else {
+        progressColor = "#dc3545"; // Rot: Trade unattraktiv
+      }
+
+      html += `
+        <div class="progress-container">
+          <div class="progress-bar" id="progressBar-${symbol}" style="width: ${progressPercent}%; background-color: ${progressColor};"></div>
+        </div>
+        <div>Best Entry: ${bestEntry}</div>
+        <div>Sicherer TP1: ${safeTP1.toFixed(2)}</div>
+        <div>TP2: ${tp2.toFixed(2)}</div>
+        <div>SL: ${sl.toFixed(2)}</div>
+        <div>CRV: ${crv.toFixed(2)}</div>
+        <div>Trade Score: ${tradeScore.toFixed(2)}</div>
+      `;
+
+      // Alarm-Logik: Wenn Trade Score ≥ 2 und Alarm aktiviert ist, spiele das Audio-Signal ab (mit Cooldown)
+      if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
+        const now = Date.now();
+        if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
+          document.getElementById("alarmAudio").play();
+          alarmLastPlayed[symbol] = now;
+        }
+      }
+
+      // Asynchron den RSI abrufen und den finalen Inhalt des Tiles aktualisieren
+      fetchRSI(symbol).then(rsiValue => {
+        tile.innerHTML = html + `<div>RSI: ${rsiValue.toFixed(2)}</div>`;
+      });
+    }
+
+    // Berechnet den RSI anhand der letzten 15 1h-Kerzen
+    async function fetchRSI(symbol) {
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=15`);
+        if (!res.ok) throw new Error(`HTTP-Error: ${res.status}`);
+        const klines = await res.json();
+        let gains = 0, losses = 0;
+        for (let i = 1; i < klines.length; i++) {
+          const change = parseFloat(klines[i][4]) - parseFloat(klines[i-1][4]);
+          if (change > 0) gains += change;
+          else losses += Math.abs(change);
+        }
+        const period = klines.length - 1;
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        const rs = (avgLoss === 0) ? 100 : (avgGain / avgLoss);
+        return 100 - (100 / (1 + rs));
+      } catch (error) {
+        console.error(`Fehler beim Abruf des RSI für ${symbol}:`, error);
+        return 50; // Fallback
+      }
+    }
+  </script>
