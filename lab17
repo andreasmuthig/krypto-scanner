@@ -279,7 +279,7 @@
                 <div>RSI: Lädt...</div>
             `;
             
-            // Handle asynchrone Datenaktualisierungen, sofern Cooldown abgelaufen ist
+            // Asynchrone Datenaktualisierungen, sofern der Cooldown abgelaufen ist
             const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
@@ -287,7 +287,7 @@
                 updateRSI(symbol);
             }
             
-            // Alarm-Logik in separate Funktion auslagern
+            // Alarm-Logik in separater Funktion
             checkAndPlayAlarm(symbol, tradeScore, bestEntry);
         }
 
