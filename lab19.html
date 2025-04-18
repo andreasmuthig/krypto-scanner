@@ -43,7 +43,7 @@
         #navMenu .menu-item:hover a {
             text-shadow: 0 0 5px #666;
         }
-        /* Alarm-Toggle */
+        /* Alarm-Toggle (global) */
         #alarmToggle.active {
             color: #28a745 !important;
             background-color: rgba(40,167,69,0.2);
@@ -92,7 +92,7 @@
         .macdField, .signalField {
             font-weight: bold;
         }
-        /* Pulsierende Animation für alarmierte Coins */
+        /* Pulsierende Animation für Alarmierung */
         @keyframes pulsate {
             0% { transform: scale(1); filter: drop-shadow(0 0 5px green); }
             50% { transform: scale(1.1); filter: drop-shadow(0 0 15px green); }
@@ -115,7 +115,7 @@
             width: 0%;
             transition: width 0.3s ease, background-color 0.3s ease;
         }
-        /* Beschreibungen der Fortschrittsbalken */
+        /* Beschreibungen */
         .progress-desc {
             font-size: 12px;
             margin-bottom: 5px;
@@ -151,17 +151,24 @@
         // Globale Variablen
         let alarmEnabled = false;
         const alarmLastPlayed = {};
-        const alarmCooldown = 30000;
+        const alarmCooldown = 30000; // globaler Alarmcooldown
         const historicalDataCooldown = 15000;
         const lastHistoricalDataFetch = {};
         const lastMACDData = {};
         const lastRSIData = {};
         const bestEntries = {};
 
-        // Globaler Status für individuelle Alarme: false = Alarm aktiv, true = deaktiviert
+        // DEFINIERE SUSPEND-ZEIT (z. B. 60 Sek.)
+        const individualAlarmSuspendTime = 60000;
+
+        // Globaler Status für individuelle Alarme:
+        // Statt Boolean wird ein Objekt gespeichert { disabled: bool, timestamp: number }
         const individualAlarmDisabled = {};
-        
-        // Alarm-Toggle für den globalen Alarm. Beim Deaktivieren entfernen wir den visuellen Alarm
+        watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
+                     "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"];
+        watchlist.forEach(symbol => individualAlarmDisabled[symbol] = { disabled: false, timestamp: 0 });
+
+        // Alarm-Toggle (global)
         document.getElementById("alarmToggle").addEventListener("click", function(e) {
             e.preventDefault();
             alarmEnabled = !alarmEnabled;
@@ -173,14 +180,6 @@
                 document.getElementById("alarmAudio").play();
             }
         });
-
-        const watchlist = [
-            "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
-            "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
-        ];
-        
-        // Initialisiere individuellen Alarmstatus pro Symbol
-        watchlist.forEach(symbol => individualAlarmDisabled[symbol] = false);
 
         // Pre-Render der Asset-Tiles inkl. individuellem Alarm-Button
         function preRenderTiles() {
@@ -198,8 +197,8 @@
                     </button>
                     <div>Lade Daten...</div>
                     <div>RSI: ${lastRSIData[symbol]}</div>
-                    <div>MACD: <span class="macdField">${lastMACDData[symbol] ? lastMACDData[symbol].macd : '-'}</span></div>
-                    <div>Signal: <span class="signalField">${lastMACDData[symbol] ? lastMACDData[symbol].signal : '-'}</span></div>
+                    <div>MACD: <span class="macdField">-</span></div>
+                    <div>Signal: <span class="signalField">-</span></div>
                 `;
                 grid.appendChild(tile);
                 lastHistoricalDataFetch[symbol] = 0;
@@ -210,18 +209,13 @@
             document.querySelectorAll(".individualAlarmToggle").forEach(btn => {
                 btn.addEventListener("click", function() {
                     const symbol = this.getAttribute("data-symbol");
-                    individualAlarmDisabled[symbol] = !individualAlarmDisabled[symbol];
-                    if (individualAlarmDisabled[symbol]) {
-                        this.classList.remove("active");
-                        this.classList.add("inactive");
-                        this.textContent = "Alarm aus";
-                        // Entferne pulsierenden Effekt für dieses Symbol
-                        document.querySelector(`#tile-${symbol} h2`).classList.remove("pulsating");
-                    } else {
-                        this.classList.remove("inactive");
-                        this.classList.add("active");
-                        this.textContent = "Alarm an";
-                    }
+                    // Setze individuellen Alarmstatus: temporär deaktivieren und Timestamp speichern
+                    individualAlarmDisabled[symbol] = { disabled: true, timestamp: Date.now() };
+                    this.classList.remove("active");
+                    this.classList.add("inactive");
+                    this.textContent = "Alarm aus";
+                    // Entferne den pulsierenden Effekt
+                    document.querySelector(`#tile-${symbol} h2`).classList.remove("pulsating");
                 });
             });
         }
@@ -230,12 +224,13 @@
         const lastLows = {};
         const lowHistorySize = 5;
         const bestEntryPuffer = 0.99;
-        
+
+        // WebSocket-Konfiguration
         const wsSymbols = watchlist.map(s => s.toLowerCase());
         const streamString = wsSymbols.map(s => `${s}@ticker`).join("/");
         const wsEndpoint = `wss://stream.binance.com:9443/stream?streams=${streamString}`;
         const ws = new WebSocket(wsEndpoint);
-        
+
         ws.onopen = () => {
             console.log("WebSocket verbunden:", wsEndpoint);
             watchlist.forEach(symbol => { lastLows[symbol] = []; });
@@ -319,10 +314,23 @@
             const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" : progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
             const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" : progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
 
+            // Prüfe, ob der individuelle Alarm-Suspend-Zeitraum abgelaufen ist
+            if (individualAlarmDisabled[symbol].disabled) {
+                if (Date.now() - individualAlarmDisabled[symbol].timestamp >= individualAlarmSuspendTime) {
+                    individualAlarmDisabled[symbol] = { disabled: false, timestamp: 0 };
+                    const btn = document.querySelector(`#tile-${symbol} .individualAlarmToggle`);
+                    if (btn) {
+                        btn.classList.remove("inactive");
+                        btn.classList.add("active");
+                        btn.textContent = "Alarm an";
+                    }
+                }
+            }
+
             tile.innerHTML = `
                 <h2>${displayName}</h2>
-                <button class="individualAlarmToggle ${individualAlarmDisabled[symbol] ? 'inactive' : 'active'}" data-symbol="${symbol}">
-                    ${individualAlarmDisabled[symbol] ? 'Alarm aus' : 'Alarm an'}
+                <button class="individualAlarmToggle ${individualAlarmDisabled[symbol].disabled ? 'inactive' : 'active'}" data-symbol="${symbol}">
+                    ${individualAlarmDisabled[symbol].disabled ? 'Alarm aus' : 'Alarm an'}
                 </button>
                 <div>Preis: ${currentPrice.toFixed(2)}</div>
                 <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
@@ -350,9 +358,9 @@
                 <div>RSI: ${lastRSIData[symbol]}</div>
             `;
             
-            // Alarmanzeige nur setzen, wenn der globale Alarm aktiv ist UND der individuelle Alarm für dieses Symbol nicht deaktiviert wurde.
+            // Setze den pulsierenden Effekt nur, wenn globaler Alarm aktiv ist und der individuelle Alarm nicht suspendiert/ausgeschaltet ist.
             const header = tile.querySelector("h2");
-            if (tradeScore >= 2 && alarmEnabled && !individualAlarmDisabled[symbol]) {
+            if (tradeScore >= 2 && alarmEnabled && !individualAlarmDisabled[symbol].disabled) {
                 header.classList.add("pulsating");
             } else {
                 header.classList.remove("pulsating");
@@ -396,7 +404,7 @@
         }
 
         function checkAndPlayAlarm(symbol, tradeScore, bestEntry) {
-            if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt..." && !individualAlarmDisabled[symbol]) {
+            if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt..." && !individualAlarmDisabled[symbol].disabled) {
                 const now = Date.now();
                 if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
                     document.getElementById("alarmAudio").play();
