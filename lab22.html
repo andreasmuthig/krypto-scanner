@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Übersicht & Trend‑Scanner</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    /* Gemeinsames Navigationsmenü */
+    #navMenu {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 70px;
+      background: rgba(53,53,53,0.95);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+    }
+    #navMenu .menu-item {
+      margin: 0 15px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 16px;
+    }
+    #navMenu .menu-item a {
+      color: #e0e0e0;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      transition: all 0.3s ease;
+    }
+    #navMenu .menu-item:hover a {
+      text-shadow: 0 0 5px #666;
+    }
+    /* Page-Container */
+    #mainContent {
+      margin-top: 100px;
+    }
+    /* Gemeinsame Tabellen-Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #444;
+      text-align: center;
+    }
+    th {
+      background-color: #333;
+    }
+    /* Trend‑Scanner-spezifisch */
+    #controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    select, button {
+      background: #222;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #chartContainer {
+      position: relative;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+    #stats {
+      margin-bottom: 20px;
+    }
+  </style>
+
+  <!-- Externe Bibliotheken -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/simple-statistics@7.7.4/dist/simple-statistics.min.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+
+  <!-- Gemeinsames Menü -->
+  <nav id="navMenu">
+    <div class="menu-item">
+      <a href="index.html"><i data-feather="home"></i> Home</a>
+    </div>
+    <div class="menu-item">
+      <a href="lab20.html"><i data-feather="activity"></i> Monitor</a>
+    </div>
+    <div class="menu-item">
+      <a href="settings.html"><i data-feather="settings"></i> Einstellungen</a>
+    </div>
+    <div class="menu-item">
+      <a href="#scanner"><i data-feather="trending-up"></i> Scannen</a>
+    </div>
+  </nav>
+
+  <div id="mainContent">
+    <!-- Deine bestehende Übersicht (index.html) -->
+    <section id="overview">
+      <h1>Krypto‑Übersicht</h1>
+      <!-- Hier kommt dein bestehender Code, der Preise, Charts etc. anzeigt -->
+      <!-- z.B. eine Tabelle oder Cards mit aktuellen Kursen -->
+    </section>
+
+    <!-- Trend‑Scanner -->
+    <section id="scanner">
+      <h2>Trend‑Scanner</h2>
+
+      <!-- Auswahl und Scan‑Button -->
+      <div id="controls">
+        <label for="symbol">Coin:</label>
+        <select id="symbol">
+          <option>BTCUSDT</option>
+          <option>ETHUSDT</option>
+          <option>SOLUSDT</option>
+          <!-- weitere aus deiner Watchlist -->
+        </select>
+
+        <label for="interval">Zeitrahmen:</label>
+        <select id="interval">
+          <option value="1h">1 Stunde</option>
+          <option value="4h">4 Stunden</option>
+          <option value="1d">1 Tag</option>
+        </select>
+
+        <button id="btnScan">Scan starten</button>
+      </div>
+
+      <!-- Chart und Kennzahlen -->
+      <div id="chartContainer">
+        <canvas id="trendChart"></canvas>
+      </div>
+      <div id="stats"></div>
+
+      <!-- Ergebnis‑Tabelle -->
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>Signal</th>
+            <th>Akt. Preis</th>
+            <th>Trendlinie (letzter Wert)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    // Feather‑Icons initialisieren
+    feather.replace();
+
+    const ctx     = document.getElementById('trendChart').getContext('2d');
+    let chart;
+
+    document.getElementById('btnScan')
+            .addEventListener('click', scan);
+
+    async function scan() {
+      const symbol   = document.getElementById('symbol').value;
+      const interval = document.getElementById('interval').value;
+      // 1) Historische Daten holen
+      const raw = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=100`)
+                          .then(r => r.json());
+      const prices = raw.map(k => parseFloat(k[4]));
+      const labels = raw.map(k => new Date(k[0]).toLocaleString());
+
+      // 2) Peaks detektieren
+      const peaks = detectPeaks(prices);
+
+      // 3) Trendlinie via Regression berechnen
+      const trendValues = computeRegressionLine(peaks, prices.length);
+
+      // 4) Signal & Backtest
+      const signal = generateSignal(prices, trendValues);
+      const stats  = backtest(prices, trendValues);
+
+      // 5) Chart aktualisieren
+      updateChart(labels, prices, trendValues);
+
+      // 6) Anzeige aktualisieren
+      document.querySelector('#stats').innerHTML =
+        `<strong>Backtest:</strong> Trades: ${stats.trades}, Trefferquote: ${stats.winRate}, Ø Profit: ${stats.avgProfit}`;
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = `<tr>
+        <td>${signal}</td>
+        <td>${prices.at(-1).toFixed(2)}</td>
+        <td>${trendValues.at(-1)}</td>
+      </tr>`;
+    }
+
+    function detectPeaks(prices) {
+      const highs = [], lows = [];
+      for (let i = 1; i < prices.length - 1; i++) {
+        if (prices[i] > prices[i-1] && prices[i] > prices[i+1]) highs.push({i, v: prices[i]});
+        if (prices[i] < prices[i-1] && prices[i] < prices[i+1]) lows.push({i, v: prices[i]});
+      }
+      return { highs, lows };
+    }
+
+    function computeRegressionLine(peaks, length) {
+      const pts = peaks.highs.concat(peaks.lows).map(p => [p.i, p.v]);
+      if (pts.length < 2) return Array(length).fill(NaN);
+      const lr = ss.linearRegression(pts);
+      const f  = ss.linearRegressionLine(lr);
+      return Array.from({length}, (_, i) => f(i).toFixed(2));
+    }
+
+    function generateSignal(prices, trend) {
+      const n = prices.length;
+      if (n < 2) return 'Keine Daten';
+      const y0 = prices[n-2], y1 = prices[n-1];
+      const t0 = parseFloat(trend[n-2]), t1 = parseFloat(trend[n-1]);
+      if (y0 < t0 && y1 > t1) return 'Kauf';
+      if (y0 > t0 && y1 < t1) return 'Verkauf';
+      return 'Neutral';
+    }
+
+    function backtest(prices, trend) {
+      const trades = []; let pos = null;
+      for (let i = 1; i < prices.length; i++) {
+        const sig = generateSignal(prices.slice(0,i+1), trend.slice(0,i+1));
+        if (!pos && sig==='Kauf') pos = prices[i];
+        if (pos && sig==='Verkauf') {
+          trades.push(prices[i] - pos);
+          pos = null;
+        }
+      }
+      const wins = trades.filter(p => p>0).length;
+      const avg  = trades.reduce((a,b)=>a+b,0) / Math.max(trades.length,1);
+      return {
+        trades: trades.length,
+        winRate: (trades.length? (wins/trades.length*100).toFixed(1)+'%' : '0%'),
+        avgProfit: avg.toFixed(2)
+      };
+    }
+
+    function updateChart(labels, prices, trend) {
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Preis',     data: prices,  borderWidth: 1 },
+            { label: 'Trendlinie', data: trend,   borderDash: [5,5], borderWidth: 1 }
+          ]
+        },
+        options: {
+          scales: { x: { display: false } },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    // Direkt beim Laden einmal ausführen für Default‑Werte
+    scan();
+  </script>
+</body>
+</html>
