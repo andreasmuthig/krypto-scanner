@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8" />
@@ -66,6 +67,15 @@
         .asset-tile h2 {
             margin-bottom: 10px;
             text-align: center;
+        }
+        /* Pulsierende Animation für alarmierte Coins */
+        @keyframes pulsate {
+            0% { transform: scale(1); filter: drop-shadow(0 0 5px green); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 15px green); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 5px green); }
+        }
+        .pulsating {
+            animation: pulsate 1s infinite;
         }
         /* Fortschrittsbalken */
         .progress-container {
@@ -232,9 +242,8 @@
             return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
         }
 
-        // Aktualisiert ein Asset-Tile inkl. zweier Fortschrittsbalken:
-        // • Ein Balken für den Fortschritt von Entry (bestEntry) bis TP1 (safeTP1)
-        // • Ein Balken für den Fortschritt von TP1 bis TP2
+        // Aktualisiert ein Asset-Tile inkl. zweier Fortschrittsbalken und pulsiert den Header,
+        // wenn ein guter Trade erkannt wird (Trade Score ≥ 2).
         async function updateTileViaWS(symbol, data) {
             const tile = document.getElementById(`tile-${symbol}`);
             if (!tile) return;
@@ -247,11 +256,17 @@
                 bestEntry = (lowestLow * bestEntryPuffer).toFixed(2);
             }
 
-            // Definiere TP2 und SL (wie bisher)
+            // Definiere TP2 und SL wie bisher
             const tp2 = currentPrice * 1.05;
             const sl = currentPrice * 0.97;
-            // safeTP1 wird hier als erstes Gewinnziel (TP1) genutzt
+            // safeTP1 wird als erstes Gewinnziel (TP1) genutzt
             const safeTP1 = (tp2 + sl) / 2;
+
+            // Berechne Trade Score
+            const entryDeviation = (currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry);
+            const rewardRisk = (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
+            const alpha = 2;
+            const tradeScore = rewardRisk - (alpha * entryDeviation);
 
             // Fortschritt von Entry bis TP1
             let progressEntryTP1 = ((currentPrice - parseFloat(bestEntry)) / (safeTP1 - parseFloat(bestEntry))) * 100;
@@ -261,7 +276,7 @@
             let progressTP1TP2 = currentPrice < safeTP1 ? 0 : ((currentPrice - safeTP1) / (tp2 - safeTP1)) * 100;
             progressTP1TP2 = Math.max(0, Math.min(progressTP1TP2, 100));
 
-            // Farbwahl basierend auf den Fortschritten:
+            // Farbwahl für die Balken:
             const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" :
                 progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
             const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" :
@@ -295,6 +310,17 @@
                 <div>RSI: ${lastRSIData[symbol]}</div>
             `;
             
+            // Füge, wenn Trade Score hoch genug, die pulsierende Klasse hinzu – und entferne sie nach 10 Sekunden
+            const header = tile.querySelector("h2");
+            if (tradeScore >= 2) {
+                header.classList.add("pulsating");
+                setTimeout(() => {
+                    header.classList.remove("pulsating");
+                }, 10000);
+            } else {
+                header.classList.remove("pulsating");
+            }
+            
             const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
@@ -302,7 +328,7 @@
                 updateRSI(symbol);
             }
             
-            checkAndPlayAlarm(symbol /*, tradeScore, bestEntry */);
+            checkAndPlayAlarm(symbol, tradeScore, bestEntry);
         }
 
         async function updateMACD(symbol) {
@@ -338,8 +364,10 @@
             }
         }
 
-        function checkAndPlayAlarm(symbol /*, tradeScore, bestEntry */) {
-            if (alarmEnabled /* && tradeScore >= 2 && bestEntry !== "Lädt..." */) {
+        function checkAndPlayAlarm(symbol, tradeScore, bestEntry) {
+            // Alarmierung: Wird ausgelöst, wenn Trade Score hoch genug ist (hier ≥ 2),
+            // der Alarm aktiviert ist und pro Symbol ein Cooldown beachtet wird.
+            if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
                 const now = Date.now();
                 if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
                     document.getElementById("alarmAudio").play();
