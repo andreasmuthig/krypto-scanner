@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trend‑Scanner mit Score-LED</title>
+  <style>
+    body { background-color: #121212; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    #navMenu { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: rgba(53,53,53,0.95); box-shadow: 0 4px 20px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1100; }
+    #navMenu .menu-item { margin: 0 15px; display: flex; align-items: center; gap: 5px; font-size: 16px; }
+    #navMenu .menu-item a { color: #e0e0e0; text-decoration: none; padding: 5px 10px; border-radius: 5px; transition: all 0.3s ease; }
+    #navMenu .menu-item:hover a { text-shadow: 0 0 5px #666; }
+    #mainContent { margin-top: 100px; }
+    #controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
+    select, button { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+    #analysis { background: #1e1e1e; padding: 10px; border-radius: 5px; font-size: 14px; line-height: 1.4; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px; border: 1px solid #444; text-align: center; }
+    th { background: #333; }
+    .led-bar { display: flex; justify-content: center; gap: 4px; }
+    .led { width: 14px; height: 10px; border-radius: 2px; background: #444; box-shadow: inset 0 0 4px #000; }
+    .on-red { background: #b00020; box-shadow: 0 0 6px #ff3d3d; }
+    .on-orange { background: #ff9100; box-shadow: 0 0 6px #ff9100; }
+    .on-yellow { background: #ffea00; box-shadow: 0 0 6px #ffea00; }
+    .on-green { background: #00c853; box-shadow: 0 0 6px #00e676; }
+    .alarm-active { background-color: #ff6b6b !important; color: #121212 !important; animation: blink 1s infinite alternate; }
+    @keyframes blink {
+      from { opacity: 1; }
+      to { opacity: 0.5; }
+    }
+    .trade-ready-yes { background-color: #00c853; color: #e0e0e0; }
+    .trade-ready-no { background-color: #ff9100; color: #e0e0e0; }
+  </style>
+  <script src="https://unpkg.com/simple-statistics@7.7.4/dist/simple-statistics.min.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body>
+  <nav id="navMenu">
+    <div class="menu-item"><a href="index.html"><i data-feather="home"></i> Home</a></div>
+    <div class="menu-item"><a href="lab20.html"><i data-feather="activity"></i> Monitor</a></div>
+    <div class="menu-item"><a href="settings.html"><i data-feather="settings"></i> Einstellungen</a></div>
+    <div class="menu-item"><a href="#scanner"><i data-feather="trending-up"></i> Scannen</a></div>
+  </nav>
+
+  <div id="mainContent">
+    <section id="scanner">
+      <h1>Krypto Trend Scanner</h1>
+      <div id="analysis"></div>
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Preis</th>
+            <th>Nähe Tief (24h)</th>
+            <th>24h Range (%)</th>
+            <th>Trend Score</th>
+            <th>Trade Bereit?</th>
+            <th>Alarm</th>
+          </tr>
+        </thead>
+        <tbody>
+          </tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    feather.replace();
+    const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]; // Füge hier deine gewünschten Währungen hinzu
+    const scanInterval = 60000; // Scan-Intervall in Millisekunden (z.B. alle 60 Sekunden)
+
+    function scoreBar(score) {
+      const val = parseInt(score);
+      let active = 0;
+      if (val >= 80) active = 5;
+      else if (val >= 60) active = 4;
+      else if (val >= 40) active = 3;
+      else if (val >= 20) active = 2;
+      else if (val > 0) active = 1;
+      let leds = '';
+      for (let i = 0; i < 5; i++) {
+        let cls = 'led';
+        if (i < active) {
+          cls += val >= 80 ? ' on-green' : val >= 60 ? ' on-yellow' : val >= 40 ? ' on-orange' : ' on-red';
+        }
+        leds += `<div class="${cls}"></div>`;
+      }
+      return `<div class=\"led-bar\">${leds}</div><div style='font-size: 12px; margin-top: 4px;'>${val}%</div>`;
+    }
+
+    async function scanSymbol(symbol) {
+      try {
+        const tf = '1h'; // Verwenden wir vorerst einen festen Zeitrahmen für die Analyse
+        const limit = 100;
+        const raw = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=${limit}`).then(r => r.json());
+        if (!raw || raw.length < limit) {
+          console.warn(`Nicht genügend Daten für ${symbol}`);
+          return null;
+        }
+
+        const prices = raw.map(k => parseFloat(k[4]));
+        const high24h = Math.max(...raw.slice(-24).map(k => parseFloat(k[2])));
+        const low24h = Math.min(...raw.slice(-24).map(k => parseFloat(k[3])));
+        const currentPrice = prices.at(-1);
+        const range24h = ((high24h - low24h) / low24h) * 100;
+        const proximityToLow = ((currentPrice - low24h) / (high24h - low24h)) * 100;
+
+        // Vereinfachte Trend Score Berechnung (kann später verfeinert werden)
+        const slope = prices.at(-1) - prices.at(0);
+        const slopeScore = Math.max(0, Math.min(Math.abs(slope) * 100, 100)); // Beispielhafte Skalierung
+
+        const score = slopeScore; // Verwenden wir vorerst nur den Slope als einfachen Score
+
+        const isTradeReady = score > 50 && range24h > 2; // Beispielhafte Bedingungen für Trade-Bereitschaft
+        const shouldAlarm = proximityToLow < 10 && isTradeReady; // Beispielhafte Alarmbedingung
+
+        return {
+          symbol,
+          price: currentPrice.toFixed(2),
+          proximityToLow: proximityToLow.toFixed(1),
+          range24h: range24h.toFixed(1),
+          score: score.toFixed(0),
+          isTradeReady,
+          shouldAlarm
+        };
+
+      } catch (error) {
+        console.error(`Fehler beim Scannen von ${symbol}:`, error);
+        return null;
+      }
+    }
+
+    async function updateTable() {
+      const results = await Promise.all(watchlist.map(scanSymbol));
+      const tbody = document.querySelector('#resultTable tbody');
+      tbody.innerHTML = '';
+
+      results.forEach(result => {
+        if (result) {
+          const row = tbody.insertRow();
+          const priceCell = row.insertCell();
+          const proximityCell = row.insertCell();
+          const rangeCell = row.insertCell();
+          const scoreCell = row.insertCell();
+          const tradeReadyCell = row.insertCell();
+          const alarmCell = row.insertCell();
+
+          row.insertCell().textContent = result.symbol;
+          priceCell.textContent = result.price;
+          proximityCell.textContent = `${result.proximityToLow}%`;
+          rangeCell.textContent = `${result.range24h}%`;
+          scoreCell.innerHTML = scoreBar(result.score);
+          tradeReadyCell.textContent = result.isTradeReady ? 'Ja' : 'Nein';
+          tradeReadyCell.className = result.isTradeReady ? 'trade-ready-yes' : 'trade-ready-no';
+          alarmCell.textContent = result.shouldAlarm ? 'Alarm!' : '';
+          alarmCell.className = result.shouldAlarm ? 'alarm-active' : '';
+        }
+      });
+    }
+
+    // Initialer Scan und periodische Updates
+    updateTable();
+    setInterval(updateTable, scanInterval);
+  </script>
+</body>
+</html>
