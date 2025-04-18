@@ -124,15 +124,15 @@
         // Initialisiere Feather Icons
         feather.replace();
 
-        // Globaler Alarm-Status und Timer
+        // Globale Variablen
         let alarmEnabled = false;
         const alarmLastPlayed = {};
         const alarmCooldown = 30000;
         const historicalDataCooldown = 15000;
         const lastHistoricalDataFetch = {};
         const lastMACDData = {};
-        // Globaler Speicher für den letzten RSI-Wert
         const lastRSIData = {};
+        const bestEntries = {};  // Speichert für jedes Symbol den zuletzt gültigen Best Entry
 
         // Alarm-Toggle
         document.getElementById("alarmToggle").addEventListener("click", function(e) {
@@ -159,7 +159,7 @@
                 const tile = document.createElement("div");
                 tile.className = "asset-tile";
                 tile.id = `tile-${symbol}`;
-                // Initialer RSI-Wert als Platzhalter
+                // Initialer RSI-Wert als Platzhalter (wird später überschrieben)
                 lastRSIData[symbol] = "Lädt...";
                 tile.innerHTML = `<h2>${symbol.replace("USDT", "")}</h2>
                                   <div>Lade Daten...</div>
@@ -242,24 +242,31 @@
             return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
         }
 
-        // Aktualisiert ein Asset-Tile inkl. zweier Fortschrittsbalken und pulsiert den Header,
-        // wenn ein guter Trade erkannt wird (Trade Score ≥ 2).
+        // Aktualisiert ein Asset-Tile inkl. zweier Fortschrittsbalken, Best Entry und dem pulsierenden Header,
+        // wenn ein guter Trade (Trade Score ≥ 2) erkannt wird.
         async function updateTileViaWS(symbol, data) {
             const tile = document.getElementById(`tile-${symbol}`);
             if (!tile) return;
             const displayName = symbol.replace("USDT", "");
             const currentPrice = parseFloat(data.c);
 
-            let bestEntry = "Lädt...";
+            // Best Entry berechnen – falls vorhanden, wird der zuletzt gültige übernommen,
+            // sodass der Platzhalter "Lädt..." nicht angezeigt wird.
+            let bestEntryCandidate = "Lädt...";
             if (lastLows[symbol] && lastLows[symbol].length > 0) {
                 const lowestLow = Math.min(...lastLows[symbol]);
-                bestEntry = (lowestLow * bestEntryPuffer).toFixed(2);
+                bestEntryCandidate = (lowestLow * bestEntryPuffer).toFixed(2);
             }
+            if (bestEntryCandidate === "Lädt..." && bestEntries[symbol]) {
+                bestEntryCandidate = bestEntries[symbol];
+            } else if (bestEntryCandidate !== "Lädt...") {
+                bestEntries[symbol] = bestEntryCandidate;
+            }
+            const bestEntry = bestEntryCandidate;
 
-            // Definiere TP2 und SL wie bisher
+            // Berechne TP2, SL und das erste Gewinnziel (TP1)
             const tp2 = currentPrice * 1.05;
             const sl = currentPrice * 0.97;
-            // safeTP1 wird als erstes Gewinnziel (TP1) genutzt
             const safeTP1 = (tp2 + sl) / 2;
 
             // Berechne Trade Score
@@ -272,15 +279,15 @@
             let progressEntryTP1 = ((currentPrice - parseFloat(bestEntry)) / (safeTP1 - parseFloat(bestEntry))) * 100;
             progressEntryTP1 = Math.max(0, Math.min(progressEntryTP1, 100));
 
-            // Fortschritt von TP1 bis TP2 (nur wenn currentPrice über TP1 liegt)
+            // Fortschritt von TP1 bis TP2 (nur falls currentPrice über TP1 liegt)
             let progressTP1TP2 = currentPrice < safeTP1 ? 0 : ((currentPrice - safeTP1) / (tp2 - safeTP1)) * 100;
             progressTP1TP2 = Math.max(0, Math.min(progressTP1TP2, 100));
 
-            // Farbwahl für die Balken:
+            // Farbwahl für die Fortschrittsbalken
             const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" :
-                progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
+                                          progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
             const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" :
-                progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
+                                        progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
 
             tile.innerHTML = `
                 <h2>${displayName}</h2>
@@ -310,17 +317,21 @@
                 <div>RSI: ${lastRSIData[symbol]}</div>
             `;
             
-            // Füge, wenn Trade Score hoch genug, die pulsierende Klasse hinzu – und entferne sie nach 10 Sekunden
+            // Pulsierenden Effekt im Header nur setzen, wenn Trade Score hoch genug ist
             const header = tile.querySelector("h2");
-            if (tradeScore >= 2) {
+            if (tradeScore >= 2 && !header.dataset.pulseActive) {
                 header.classList.add("pulsating");
+                header.dataset.pulseActive = "true";
                 setTimeout(() => {
                     header.classList.remove("pulsating");
+                    header.dataset.pulseActive = "";
                 }, 10000);
-            } else {
+            } else if (tradeScore < 2) {
                 header.classList.remove("pulsating");
+                header.dataset.pulseActive = "";
             }
             
+            // Aktualisiere asynchron MACD und RSI, sofern der Cooldown abgelaufen ist
             const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
@@ -365,8 +376,7 @@
         }
 
         function checkAndPlayAlarm(symbol, tradeScore, bestEntry) {
-            // Alarmierung: Wird ausgelöst, wenn Trade Score hoch genug ist (hier ≥ 2),
-            // der Alarm aktiviert ist und pro Symbol ein Cooldown beachtet wird.
+            // Alarmierung: Wird ausgelöst, wenn Trade Score hoch genug ist (≥ 2) und pro Symbol der Cooldown beachtet wird.
             if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
                 const now = Date.now();
                 if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
