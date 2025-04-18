@@ -14,7 +14,13 @@
     #controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
     select, button { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     #chartContainer { position: relative; height: 300px; margin-bottom: 20px; }
-    #stats, #analysis { margin-bottom: 10px; }
+    #stats, #analysis { background: #1e1e1e; padding: 10px; border-radius: 5px; font-size: 14px; line-height: 1.4; }
+@keyframes pulse {
+  0% { background-color: rgba(0, 200, 100, 0.1); }
+  50% { background-color: rgba(0, 200, 100, 0.4); }
+  100% { background-color: rgba(0, 200, 100, 0.1); }
+}
+.pulse-entry { animation: pulse 1.5s infinite; border-radius: 4px; padding: 4px; display: inline-block; }
     #analysis { background: #1e1e1e; padding: 10px; border-radius: 5px; font-size: 14px; line-height: 1.4; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 8px; border: 1px solid #444; text-align: center; }
@@ -176,11 +182,11 @@
                 annotations: {
                   S1: {
                     type: 'line', yMin: S1, yMax: S1, borderColor: 'rgba(0,255,0,0.4)', borderWidth: 1,
-                    label: { content: `S1 ${S1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(0,255,0,0.1)', color: '#0f0' }
+                    label: { content: `S1 ${S1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(0,255,0,0.1)', color: '#0f0', position: 'start', yAdjust: -10 }
                   },
                   R1: {
                     type: 'line', yMin: R1, yMax: R1, borderColor: 'rgba(255,0,0,0.4)', borderWidth: 1,
-                    label: { content: `R1 ${R1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(255,0,0,0.1)', color: '#f00' }
+                    label: { content: `R1 ${R1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(255,0,0,0.1)', color: '#f00', position: 'start', yAdjust: 14 }
                   }
                 }
               }
@@ -190,7 +196,19 @@
         });
 
         document.getElementById('stats').innerHTML = `<strong>RSI:</strong> ${rsi.toFixed(1)}, <strong>Vol:</strong> ${(vol/avgVol).toFixed(2)}×`;
-        document.getElementById('analysis').innerHTML = `Signal: ${signal}, Score: ${score}%`;
+        let lowIndex = prices.reduce((minIdx, val, idx, arr) => val < arr[minIdx] ? idx : minIdx, 0);
+let lowValue = prices[lowIndex];
+let rise = ((priceLast - lowValue) / lowValue) * 100;
+let rallyText = rise > 3
+  ? `<span class="pulse-entry">Möglicher Einstieg: Seit Tief bei ${lowValue.toFixed(2)} Anstieg von ${rise.toFixed(1)} %</span>`
+  : 'Kein signifikanter Anstieg seit letztem Tief.';
+
+// SL/TP anpassen auf Basis des Tiefs
+if (rise > 3) {
+  sl = lowValue * 0.995;
+  tp = priceLast + 2 * (priceLast - sl);
+}
+document.getElementById('analysis').innerHTML = `Signal: ${signal}, Score: ${score}%<br>${rallyText}`;
         document.querySelector('#resultTable tbody').innerHTML = `
           <tr>
             <td>${signal}</td>
