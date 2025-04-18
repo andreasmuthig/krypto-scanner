@@ -157,7 +157,7 @@
         const lastRSIData = {};
         const bestEntries = {};
 
-        // Suspend-Zeit für individuellen Alarm in Millisekunden (z. B. 60 Sek.)
+        // Suspend-Zeit für individuellen Alarm in Millisekunden (z. B. 60 Sek.)
         const individualAlarmSuspendTime = 60000;
 
         // Globaler Status für individuelle Alarme: gespeichert als Objekt { disabled: bool, timestamp: number }
@@ -263,7 +263,7 @@
         ws.onerror = error => console.error("WebSocket-Fehler:", error);
         ws.onclose = () => console.log("WebSocket-Verbindung geschlossen");
 
-        // Hilfsfunktionen zum Abruf der historischen Klines, EMA, MACD usw.
+        // Hilfsfunktionen zum Abruf der historischen Klines, EMA, MACD etc.
         async function fetchHistoricalKlines(symbol, interval, limit) {
             try {
                 const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
@@ -295,7 +295,7 @@
             return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
         }
 
-        // Update einzelner dynamischer Felder im Tile, ohne das gesamte Tile neu zu rendern
+        // Update der dynamischen Felder im Tile (ohne komplettes Neurendern)
         async function updateTileViaWS(symbol, data) {
             // Aktualisiere Basiswerte
             const currentPrice = parseFloat(data.c);
@@ -327,8 +327,8 @@
             document.getElementById(`tp1-${symbol}`).textContent = safeTP1.toFixed(2);
             document.getElementById(`tp2-${symbol}`).textContent = tp2.toFixed(2);
             document.getElementById(`sl-${symbol}`).textContent = sl.toFixed(2);
-            document.getElementById(`crv-${symbol}`).textContent = (((safeTP1 - parseFloat(bestEntryCandidate)) / (parseFloat(bestEntryCandidate) - sl)).toFixed(2));
-            document.getElementById(`score-${symbol}`).textContent = (tradeScore.toFixed(2));
+            document.getElementById(`crv-${symbol}`).textContent = ((safeTP1 - parseFloat(bestEntryCandidate)) / (parseFloat(bestEntryCandidate) - sl)).toFixed(2);
+            document.getElementById(`score-${symbol}`).textContent = tradeScore.toFixed(2);
             
             // Fortschrittsbalken berechnen
             let progressEntryTP1 = ((currentPrice - parseFloat(bestEntryCandidate)) / (safeTP1 - parseFloat(bestEntryCandidate))) * 100;
@@ -347,7 +347,7 @@
             // RSI asynchron updaten
             updateRSI(symbol);
 
-            // Prüfe, ob der individuelle Alarm-Suspend-Zeitraum abgelaufen ist und setze bei Bedarf den Status zurück
+            // Prüfe, ob der individuelle Alarm-Suspend-Zeitraum abgelaufen ist
             if (individualAlarmDisabled[symbol].disabled && (Date.now() - individualAlarmDisabled[symbol].timestamp >= individualAlarmSuspendTime)) {
                 individualAlarmDisabled[symbol] = { disabled: false, timestamp: 0 };
                 const btn = document.querySelector(`#tile-${symbol} .individualAlarmToggle`);
@@ -358,7 +358,7 @@
                 }
             }
 
-            // Setze den pulsierenden Effekt, wenn globaler Alarm aktiv und Trade Score hoch ist
+            // Setze pulsierenden Effekt, wenn globaler Alarm aktiv und Trade Score hoch ist
             const header = document.querySelector(`#tile-${symbol} h2`);
             if (tradeScore >= 2 && alarmEnabled && !individualAlarmDisabled[symbol].disabled) {
                 header.classList.add("pulsating");
@@ -406,6 +406,16 @@
                     document.getElementById("alarmAudio").play();
                     alarmLastPlayed[symbol] = now;
                 }
+            }
+        }
+
+        async function updateRSI(symbol) {
+            try {
+                const rsiValue = await fetchRSI(symbol);
+                lastRSIData[symbol] = rsiValue.toFixed(2);
+                document.getElementById(`rsi-${symbol}`).textContent = lastRSIData[symbol];
+            } catch (error) {
+                console.error("Fehler beim RSI-Abruf für " + symbol + ":", error);
             }
         }
 
