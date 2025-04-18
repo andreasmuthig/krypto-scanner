@@ -383,7 +383,15 @@
                 if (macdData) {
                     lastMACDData[symbol] = macdData;
                     const macdValue = parseFloat(macdData.macd);
-                    const macdColor = macdValue >= 0 ? "green" : "red";
+                    let macdColor;
+                    // Definiere einen engen Neutralbereich zwischen -0.1 und +0.1
+                    if (macdValue >= 0.1) {
+                        macdColor = "green";
+                    } else if (macdValue <= -0.1) {
+                        macdColor = "red";
+                    } else {
+                        macdColor = "white";
+                    }
                     document.getElementById(`tile-${symbol}`).querySelector(".macdField").innerHTML = 
                         `<span style="color: ${macdColor};">${macdValue.toFixed(2)}</span>`;
                     document.getElementById(`tile-${symbol}`).querySelector(".signalField").textContent = macdData.signal;
