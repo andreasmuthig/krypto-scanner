@@ -205,18 +205,7 @@
         alert("Beim Scannen ist ein Fehler aufgetreten.");
       }
     }
-        // ... alle bisherigen Berechnungen (aus vorherigem Code) ...
 
-        // Am Ende die Tabelle erzeugen mit Score-Balken:
-        document.querySelector('#resultTable tbody').innerHTML = `
-          <tr>
-            <td>${signal}</td>
-            <td>${priceLast.toFixed(2)}</td>
-            <td>${trend.at(-1).toFixed(2)}</td>
-            <td>${scoreBar(score)}</td>
-            <td>${sl.toFixed(2)}</td>
-            <td>${tp.toFixed(2)}</td>
-          </tr>`;
 
       } catch (err) {
         console.error("Scan-Fehler:", err);
