@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trend Scanner</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        /* Navigation – ähnlich wie in index.html */
+        #navMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: rgba(53,53,53,0.95);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        }
+        #navMenu .menu-item {
+            margin: 0 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 16px;
+        }
+        #navMenu .menu-item a {
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        #navMenu .menu-item:hover a {
+            text-shadow: 0 0 5px #666;
+        }
+        /* Container für Scan-Ergebnisse */
+        #trendScannerContainer {
+            margin-top: 100px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+        th {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <nav id="navMenu">
+        <div class="menu-item">
+            <a href="index.html"><i data-feather="home"></i> Home</a>
+        </div>
+        <div class="menu-item">
+            <a href="lab20.html"><i data-feather="activity"></i> Monitor</a>
+        </div>
+        <div class="menu-item">
+            <a href="settings.html"><i data-feather="settings"></i> Einstellungen</a>
+        </div>
+        <div class="menu-item">
+            <a href="lab_trend_scanner.html"><i data-feather="trending-up"></i> Scannen</a>
+        </div>
+    </nav>
+
+    <div id="trendScannerContainer">
+        <h1>Trend Scanner</h1>
+        <p>Scan-Ergebnisse der identifizierten Trendlinien</p>
+        <table id="trendResultsTable">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Zeitrahmen</th>
+                    <th>Trendlinie (Letztes High/Low Durchschnitt)</th>
+                    <th>Aktueller Preis</th>
+                    <th>Signal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Scan-Ergebnisse werden hier eingefügt -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>
+        // Initialisiere Feather Icons
+        feather.replace();
+
+        // Watchlist der zu scannenden Kryptowährungen
+        const watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"];
+
+        // Funktion zum Abrufen historischer Kursdaten (Schlusskurse) mittels Binance API
+        async function fetchHistoricalKlines(symbol, interval, limit) {
+            try {
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                const klines = await res.json();
+                return klines.map(k => parseFloat(k[4])); // Schlusskurse
+            } catch (error) {
+                console.error(`Fehler beim Abruf historischer Klines für ${symbol}:`, error);
+                return [];
+            }
+        }
+
+        // Funktion, um einfache lokale Maxima und Minima in den Kursdaten zu identifizieren
+        function detectPeaks(prices) {
+            const peaks = { highs: [], lows: [] };
+            for (let i = 1; i < prices.length - 1; i++) {
+                if (prices[i] > prices[i - 1] && prices[i] > prices[i + 1]) {
+                    peaks.highs.push({ index: i, value: prices[i] });
+                }
+                if (prices[i] < prices[i - 1] && prices[i] < prices[i + 1]) {
+                    peaks.lows.push({ index: i, value: prices[i] });
+                }
+            }
+            return peaks;
+        }
+
+        // Funktion zur Berechnung einer Trendlinie (hier: Durchschnitt des letzten gefundenen High und Low)
+        function calculateTrendLine(peaks) {
+            const lastHigh = peaks.highs[peaks.highs.length - 1];
+            const lastLow = peaks.lows[peaks.lows.length - 1];
+            if (lastHigh && lastLow) {
+                return ((lastHigh.value + lastLow.value) / 2).toFixed(2);
+            }
+            return "-";
+        }
+
+        // Funktion, um ein einfaches Signal zu berechnen:
+        // Liegt der aktuelle Preis über der Trendlinie => "Kauf", ansonsten "Verkauf"
+        function evaluateBreakout(currentPrice, trendLine) {
+            if (trendLine === "-") return "Keine Daten";
+            return currentPrice > parseFloat(trendLine) ? "Kauf" : "Verkauf";
+        }
+
+        // Funktion zur Anzeige der Scan-Ergebnisse
+        async function scanTrends() {
+            const timeframes = ["1h", "4h", "1d"];
+            const tbody = document.querySelector("#trendResultsTable tbody");
+            tbody.innerHTML = ""; // Leere vorherige Ergebnisse
+
+            for (const symbol of watchlist) {
+                for (const interval of timeframes) {
+                    const prices = await fetchHistoricalKlines(symbol, interval, 50);
+                    if (prices.length === 0) continue;
+
+                    const peaks = detectPeaks(prices);
+                    const trendLine = calculateTrendLine(peaks);
+                    const currentPrice = prices[prices.length - 1].toFixed(2);
+                    const signal = evaluateBreakout(currentPrice, trendLine);
+
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${symbol}</td>
+                        <td>${interval}</td>
+                        <td>${trendLine}</td>
+                        <td>${currentPrice}</td>
+                        <td>${signal}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            }
+        }
+
+        // Starte den Scan beim Laden der Seite
+        scanTrends();
+
+        // Optional: Wiederhole den Scan alle 5 Minuten
+        setInterval(scanTrends, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
