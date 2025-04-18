@@ -68,6 +68,10 @@
             margin-bottom: 10px;
             text-align: center;
         }
+        /* Separate Bereiche für MACD/Siganl */
+        .macdField, .signalField {
+            font-weight: bold;
+        }
         /* Pulsierende Animation für alarmierte Coins */
         @keyframes pulsate {
             0% { transform: scale(1); filter: drop-shadow(0 0 5px green); }
@@ -121,7 +125,6 @@
 
     <script src="https://unpkg.com/feather-icons"></script>
     <script>
-        // Initialisiere Feather Icons
         feather.replace();
 
         // Globale Variablen
@@ -132,9 +135,10 @@
         const lastHistoricalDataFetch = {};
         const lastMACDData = {};
         const lastRSIData = {};
-        const bestEntries = {};  // Speichert für jedes Symbol den zuletzt gültigen Best Entry
+        const bestEntries = {};
+        // Für die Pulsierung: Zeitpunkt der letzten Aktivierung speichern.
+        const lastPulseTime = {};
 
-        // Alarm-Toggle
         document.getElementById("alarmToggle").addEventListener("click", function(e) {
             e.preventDefault();
             alarmEnabled = !alarmEnabled;
@@ -145,13 +149,11 @@
             }
         });
 
-        // Watchlist
         const watchlist = [
             "BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT",
             "DOTUSDT", "LINKUSDT", "AVAXUSDT", "DOGEUSDT", "TRXUSDT", "ARBUSDT"
         ];
 
-        // Pre-Render der Asset-Tiles
         function preRenderTiles() {
             const grid = document.getElementById("assetGrid");
             grid.innerHTML = "";
@@ -159,24 +161,25 @@
                 const tile = document.createElement("div");
                 tile.className = "asset-tile";
                 tile.id = `tile-${symbol}`;
-                // Initialer RSI-Wert als Platzhalter (wird später überschrieben)
                 lastRSIData[symbol] = "Lädt...";
-                tile.innerHTML = `<h2>${symbol.replace("USDT", "")}</h2>
-                                  <div>Lade Daten...</div>
-                                  <div>RSI: ${lastRSIData[symbol]}</div>`;
+                tile.innerHTML = `
+                    <h2>${symbol.replace("USDT", "")}</h2>
+                    <div>Lade Daten...</div>
+                    <div>RSI: ${lastRSIData[symbol]}</div>
+                    <div>MACD: <span class="macdField">${lastMACDData[symbol] ? lastMACDData[symbol].macd : '-'}</span></div>
+                    <div>Signal: <span class="signalField">${lastMACDData[symbol] ? lastMACDData[symbol].signal : '-'}</span></div>
+                `;
                 grid.appendChild(tile);
                 lastHistoricalDataFetch[symbol] = 0;
-                lastMACDData[symbol] = { macd: "Lädt...", signal: "Lädt..." };
+                lastMACDData[symbol] = { macd: "-", signal: "-" };
             });
         }
         preRenderTiles();
 
-        // Datenstruktur für vergangene Tiefstkurse
         const lastLows = {};
         const lowHistorySize = 5;
         const bestEntryPuffer = 0.99;
 
-        // WebSocket-Konfiguration
         const wsSymbols = watchlist.map(s => s.toLowerCase());
         const streamString = wsSymbols.map(s => `${s}@ticker`).join("/");
         const wsEndpoint = `wss://stream.binance.com:9443/stream?streams=${streamString}`;
@@ -184,9 +187,7 @@
 
         ws.onopen = () => {
             console.log("WebSocket verbunden:", wsEndpoint);
-            watchlist.forEach(symbol => {
-                lastLows[symbol] = [];
-            });
+            watchlist.forEach(symbol => { lastLows[symbol] = []; });
         };
 
         ws.onmessage = event => {
@@ -202,13 +203,8 @@
             updateTileViaWS(symbol, data);
         };
 
-        ws.onerror = error => {
-            console.error("WebSocket-Fehler:", error);
-        };
-
-        ws.onclose = () => {
-            console.log("WebSocket-Verbindung geschlossen");
-        };
+        ws.onerror = error => console.error("WebSocket-Fehler:", error);
+        ws.onclose = () => console.log("WebSocket-Verbindung geschlossen");
 
         async function fetchHistoricalKlines(symbol, interval, limit) {
             try {
@@ -242,16 +238,12 @@
             return { macd: macdLine.toFixed(2), signal: signalLine.toFixed(2) };
         }
 
-        // Aktualisiert ein Asset-Tile inkl. zweier Fortschrittsbalken, Best Entry und dem pulsierenden Header,
-        // wenn ein guter Trade (Trade Score ≥ 2) erkannt wird.
         async function updateTileViaWS(symbol, data) {
             const tile = document.getElementById(`tile-${symbol}`);
             if (!tile) return;
             const displayName = symbol.replace("USDT", "");
             const currentPrice = parseFloat(data.c);
 
-            // Best Entry berechnen – falls vorhanden, wird der zuletzt gültige übernommen,
-            // sodass der Platzhalter "Lädt..." nicht angezeigt wird.
             let bestEntryCandidate = "Lädt...";
             if (lastLows[symbol] && lastLows[symbol].length > 0) {
                 const lowestLow = Math.min(...lastLows[symbol]);
@@ -264,28 +256,23 @@
             }
             const bestEntry = bestEntryCandidate;
 
-            // Berechne TP2, SL und das erste Gewinnziel (TP1)
             const tp2 = currentPrice * 1.05;
             const sl = currentPrice * 0.97;
             const safeTP1 = (tp2 + sl) / 2;
 
-            // Berechne Trade Score
             const entryDeviation = (currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry);
             const rewardRisk = (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl);
             const alpha = 2;
             const tradeScore = rewardRisk - (alpha * entryDeviation);
 
-            // Fortschritt von Entry bis TP1
             let progressEntryTP1 = ((currentPrice - parseFloat(bestEntry)) / (safeTP1 - parseFloat(bestEntry))) * 100;
             progressEntryTP1 = Math.max(0, Math.min(progressEntryTP1, 100));
 
-            // Fortschritt von TP1 bis TP2 (nur falls currentPrice über TP1 liegt)
             let progressTP1TP2 = currentPrice < safeTP1 ? 0 : ((currentPrice - safeTP1) / (tp2 - safeTP1)) * 100;
             progressTP1TP2 = Math.max(0, Math.min(progressTP1TP2, 100));
 
-            // Farbwahl für die Fortschrittsbalken
             const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" :
-                                          progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
+                                            progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
             const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" :
                                         progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
 
@@ -294,8 +281,8 @@
                 <div>Preis: ${currentPrice.toFixed(2)}</div>
                 <div>24h Veränderung: ${parseFloat(data.P).toFixed(2)}%</div>
                 <div>24h Volumen: ${parseFloat(data.v).toFixed(2)}</div>
-                <div>MACD: ${lastMACDData[symbol].macd}</div>
-                <div>Signal: ${lastMACDData[symbol].signal}</div>
+                <div>MACD: <span class="macdField">${lastMACDData[symbol].macd}</span></div>
+                <div>Signal: <span class="signalField">${lastMACDData[symbol].signal}</span></div>
                 <div class="progress-container">
                     <div class="progress-bar" style="width: ${progressEntryTP1}%; background-color: ${progressEntryTP1Color};"></div>
                 </div>
@@ -317,22 +304,21 @@
                 <div>RSI: ${lastRSIData[symbol]}</div>
             `;
             
-            // Pulsierenden Effekt im Header nur setzen, wenn Trade Score hoch genug ist
+            // Pulsierend nur neu setzen wenn mehr als 10 Sec seit letzter Pulsierung vergangen sind.
             const header = tile.querySelector("h2");
-            if (tradeScore >= 2 && !header.dataset.pulseActive) {
-                header.classList.add("pulsating");
-                header.dataset.pulseActive = "true";
-                setTimeout(() => {
-                    header.classList.remove("pulsating");
-                    header.dataset.pulseActive = "";
-                }, 10000);
-            } else if (tradeScore < 2) {
+            const now = Date.now();
+            if (tradeScore >= 2) {
+                if (!lastPulseTime[symbol] || (now - lastPulseTime[symbol] > 10000)) {
+                    header.classList.add("pulsating");
+                    lastPulseTime[symbol] = now;
+                    setTimeout(() => {
+                        header.classList.remove("pulsating");
+                    }, 10000);
+                }
+            } else {
                 header.classList.remove("pulsating");
-                header.dataset.pulseActive = "";
             }
             
-            // Aktualisiere asynchron MACD und RSI, sofern der Cooldown abgelaufen ist
-            const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
                 updateMACD(symbol);
@@ -352,9 +338,8 @@
                     if (tile) {
                         const macdValue = parseFloat(macdData.macd);
                         const macdColor = macdValue >= 0 ? "green" : "red";
-                        const macdSpan = `<span style="color: ${macdColor};">${macdValue.toFixed(2)}</span>`;
-                        tile.innerHTML = tile.innerHTML.replace(/MACD: .*?</, `MACD: ${macdSpan}<`)
-                                                       .replace(/Signal: .*?</, `Signal: ${macdData.signal}<`);
+                        tile.querySelector(".macdField").innerHTML = `<span style="color: ${macdColor};">${macdValue.toFixed(2)}</span>`;
+                        tile.querySelector(".signalField").innerHTML = macdData.signal;
                     }
                 }
             } catch (error) {
@@ -368,6 +353,7 @@
                 lastRSIData[symbol] = rsiValue.toFixed(2);
                 const tile = document.getElementById(`tile-${symbol}`);
                 if (tile) {
+                    // Aktualisiere nur den RSI-Text, ohne den Rest des Inhalts zu überschreiben.
                     tile.innerHTML = tile.innerHTML.replace(/RSI: ([^<]*)</, `RSI: ${lastRSIData[symbol]}<`);
                 }
             } catch (error) {
@@ -376,7 +362,6 @@
         }
 
         function checkAndPlayAlarm(symbol, tradeScore, bestEntry) {
-            // Alarmierung: Wird ausgelöst, wenn Trade Score hoch genug ist (≥ 2) und pro Symbol der Cooldown beachtet wird.
             if (alarmEnabled && tradeScore >= 2 && bestEntry !== "Lädt...") {
                 const now = Date.now();
                 if (!alarmLastPlayed[symbol] || (now - alarmLastPlayed[symbol]) > alarmCooldown) {
