@@ -3,50 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Übersicht & Trend‑Scanner mit S/R</title>
+  <title>Übersicht & Trend‑Scanner mit S/R und Profi-Signalen</title>
   <style>
     body { background-color: #121212; color: #e0e0e0; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    /* Navigation */
     #navMenu { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: rgba(53,53,53,0.95); box-shadow: 0 4px 20px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1100; }
     #navMenu .menu-item { margin: 0 15px; display: flex; align-items: center; gap: 5px; font-size: 16px; }
     #navMenu .menu-item a { color: #e0e0e0; text-decoration: none; padding: 5px 10px; border-radius: 5px; transition: all 0.3s ease; }
     #navMenu .menu-item:hover a { text-shadow: 0 0 5px #666; }
-    /* Inhalt */
     #mainContent { margin-top: 100px; }
-    section { margin-bottom: 40px; }
-    /* Trend‑Scanner */
     #controls { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
     select, button { background: #222; color: #e0e0e0; border: 1px solid #444; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     #chartContainer { position: relative; height: 300px; margin-bottom: 20px; }
-    #stats { margin-bottom: 10px; }
-    #analysis { background: #1e1e1e; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; line-height: 1.4; }
+    #stats, #analysis { margin-bottom: 10px; }
+    #analysis { background: #1e1e1e; padding: 10px; border-radius: 5px; font-size: 14px; line-height: 1.4; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 8px; border: 1px solid #444; text-align: center; }
     th { background: #333; }
   </style>
-
-  <!-- Bibliotheken -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.2.2/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://unpkg.com/simple-statistics@7.7.4/dist/simple-statistics.min.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
-  <!-- Menü -->
   <nav id="navMenu">
     <div class="menu-item"><a href="index.html"><i data-feather="home"></i> Home</a></div>
     <div class="menu-item"><a href="lab20.html"><i data-feather="activity"></i> Monitor</a></div>
     <div class="menu-item"><a href="settings.html"><i data-feather="settings"></i> Einstellungen</a></div>
     <div class="menu-item"><a href="#scanner"><i data-feather="trending-up"></i> Scannen</a></div>
   </nav>
-
   <div id="mainContent">
-    <!-- Bestehende Übersicht -->
     <section id="overview">
-      <!-- Dein Dashboard-Code -->
+      <!-- bestehende Übersicht -->
     </section>
-
-    <!-- Trend‑Scanner -->
     <section id="scanner">
       <div id="controls">
         <label for="symbol">Coin:</label>
@@ -55,70 +44,82 @@
         <select id="interval"><option value="1h">1 Stunde</option><option value="4h">4 Stunden</option><option value="1d">1 Tag</option></select>
         <button id="btnScan">Scan starten</button>
       </div>
-
       <div id="chartContainer"><canvas id="trendChart"></canvas></div>
       <div id="stats"></div>
       <div id="analysis"></div>
-      <table id="resultTable"><thead><tr><th>Signal</th><th>Akt. Preis</th><th>Trendlinie (letzter Wert)</th></tr></thead><tbody></tbody></table>
+      <table id="resultTable"><thead><tr><th>Signal</th><th>Preis</th><th>Trendlinie</th><th>Score</th><th>SL</th><th>TP</th></tr></thead><tbody></tbody></table>
     </section>
   </div>
-
   <script>
-    feather.replace();
+    feather.replace(); Chart.register(ChartAnnotation);
     const ctx = document.getElementById('trendChart').getContext('2d'); let chart;
-    document.getElementById('btnScan').addEventListener('click', scan);
+    const higherTF = { '1h':'4h', '4h':'1d', '1d':'4h' };
 
-    function calcPivotLevels(candle) {
-      const {high, low, close} = candle;
-      const pivot = (high + low + close) / 3;
-      return {S1: (2*pivot - high).toFixed(2), R1: (2*pivot - low).toFixed(2)};
+    function calcPivot(c) { const p=(c.high+c.low+c.close)/3; return {S1:(2*p-c.high),R1:(2*p-c.low)}; }
+    function computeRSI(prices, period=14) {
+      const deltas = prices.slice(1).map((v,i)=>v-prices[i]);
+      let gains = deltas.map(d=>d>0?d:0), losses = deltas.map(d=>d<0?-d:0);
+      let avgGain = gains.slice(0,period).reduce((a,b)=>a+b,0)/period;
+      let avgLoss = losses.slice(0,period).reduce((a,b)=>a+b,0)/period;
+      let rsis = [];
+      for(let i=period;i<prices.length;i++){
+        avgGain = (avgGain*(period-1)+gains[i-1])/period;
+        avgLoss = (avgLoss*(period-1)+losses[i-1])/period;
+        rsis.push(100 - (100/(1 + avgGain/avgLoss)));
+      }
+      return rsis;
     }
+    function detectPeaks(pr) { let highs=[],lows=[]; for(let i=1;i<pr.length-1;i++){ if(pr[i]>pr[i-1]&&pr[i]>pr[i+1]) highs.push({i,v:pr[i]}); if(pr[i]<pr[i-1]&&pr[i]<pr[i+1]) lows.push({i,v:pr[i]}); } return {highs,lows}; }
+    function computeTrend(peaks,len){ const pts=peaks.highs.concat(peaks.lows).map(p=>[p.i,p.v]); if(pts.length<2) return Array(len).fill(NaN); const lr=ss.linearRegression(pts), fn=ss.linearRegressionLine(lr); return Array.from({length:len},(_,i)=>fn(i)); }
+    function genSignal(pr,tr){ const n=pr.length; if(n<2) return 'Neutral'; const y0=pr[n-2],y1=pr[n-1],t0=tr[n-2],t1=tr[n-1]; if(y0<t0&&y1>t1) return 'Kauf'; if(y0>t0&&y1<t1) return 'Verkauf'; return 'Neutral'; }
+    function backtest(pr,tr){ let trades=[],pos=null; for(let i=1;i<pr.length;i++){ let s=genSignal(pr.slice(0,i+1),tr.slice(0,i+1)); if(!pos&&s==='Kauf') pos=pr[i]; if(pos&&s==='Verkauf'){ trades.push(pr[i]-pos); pos=null; }} const wins=trades.filter(p=>p>0).length; const avg=trades.reduce((a,b)=>a+b,0)/Math.max(trades.length,1); return {trades:trades.length,winRate: trades.length? (wins/trades.length*100).toFixed(1)+'%':'0%',avgProfit:avg.toFixed(2)}; }
 
-    function describeAnalysis(signal, pivots, trendSlope) {
-      let text = `Der Trend ist ${trendSlope >= 0 ? 'aufwärts' : 'abwärts'} gerichtet.`;
-      text += ` Support (S1) liegt bei ${pivots.S1}, Resistance (R1) bei ${pivots.R1}.`;
-      text += ` Aktuelles Signal: ${signal}.`;
-      if (signal === 'Kauf') text += ' Ein Einstieg kann lohnenswert sein, falls das Volumen bestätigt.';
-      if (signal === 'Verkauf') text += ' Ein Ausstieg oder Short könnte erwogen werden.';
-      if (signal === 'Neutral') text += ' Kein klarer Breakout – abwarten oder weitere Bestätigung suchen.';
-      return text;
+    async function scan(){
+      const sym=document.getElementById('symbol').value;
+      const tf=document.getElementById('interval').value;
+      // fetch main
+      const raw=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`).then(r=>r.json());
+      const prices=raw.map(k=>parseFloat(k[4]));
+      const volumes=raw.map(k=>parseFloat(k[5]));
+      const labels=raw.map(k=>new Date(k[0]).toLocaleString());
+      // pivots
+      const lc=raw.at(-1); const piv=calcPivot({high:lc[2],low:lc[3],close:lc[4]});
+      // trend
+      const peaks=detectPeaks(prices);
+      const trend=computeTrend(peaks,prices.length);
+      let signal=genSignal(prices,trend);
+      // multi TF
+      const htf=higherTF[tf]; if(htf){ const r2=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${htf}&limit=100`).then(r=>r.json()); const pr2=r2.map(k=>parseFloat(k[4])); const tr2=computeTrend(detectPeaks(pr2),pr2.length); const s2=genSignal(pr2,tr2); if(s2!==signal) signal='Neutral'; }
+      // volume filter
+      const avgVol=volumes.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,volumes.length);
+      const vol=volumes.at(-1); const volRatio=vol/avgVol;
+      const volOk=volRatio>=1.5;
+      if(signal!=='Neutral'&&!volOk) signal='Neutral';
+      // RSI
+      const rsiArr=computeRSI(prices,14); const lastRsi=rsiArr.at(-1)||50;
+      if(signal==='Kauf'&&lastRsi>70) signal='Neutral';
+      if(signal==='Verkauf'&&lastRsi<30) signal='Neutral';
+      // scoring
+      const slope=trend.at(-1)-trend.at(0);
+      const range=Math.max(...prices)-Math.min(...prices);
+      const volScore=Math.min(volRatio/2*100,100);
+      const rsiScore=Math.max(0,(1-Math.abs(lastRsi-50)/50)*100);
+      const slopeScore=range?Math.min(Math.abs(slope)/range*100,100):0;
+      const score=((volScore+rsiScore+slopeScore)/3).toFixed(0);
+      // SL/TP
+      const priceLast=prices.at(-1);
+      const sl=piv.S1*0.995;
+      const tp=priceLast+2*(priceLast-sl);
+      // backtest
+      const stats=backtest(prices,trend);
+      // annotations
+      const ann={ S1:{type:'line',yMin:piv.S1,yMax:piv.S1,borderColor:'green',borderWidth:1,label:{content:`S1 ${piv.S1.toFixed(2)}`,enabled:true,position:'start'}}, R1:{type:'line',yMin:piv.R1,yMax:piv.R1,borderColor:'red',borderWidth:1,label:{content:`R1 ${piv.R1.toFixed(2)}`,enabled:true,position:'end'}} };
+      // update
+      if(chart) chart.destroy(); chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Preis',data:prices,borderWidth:1},{label:'Trendlinie',data:trend,borderDash:[5,5],borderWidth:1}]},options:{scales:{x:{display:false}},plugins:{legend:{position:'bottom'},annotation:{annotations:ann}}}});
+      document.getElementById('stats').innerHTML=`<strong>Backtest:</strong> Trades: ${stats.trades}, Trefferquote: ${stats.winRate}, Ø Profit: ${stats.avgProfit}`;
+      document.getElementById('analysis').innerHTML=`Empfehlung: ${signal==='Neutral'?'Kein Einstieg':signal==='Kauf'?`Long (Score ${score}%)`:`Short (Score ${score}%)`}. Volumen ${volRatio.toFixed(2)}×, RSI ${lastRsi.toFixed(0)}. SL ${sl.toFixed(2)}, TP ${tp.toFixed(2)}.`;
+      document.querySelector('#resultTable tbody').innerHTML=`<tr><td>${signal}</td><td>${priceLast.toFixed(2)}</td><td>${trend.at(-1).toFixed(2)}</td><td>${score}%</td><td>${sl.toFixed(2)}</td><td>${tp.toFixed(2)}</td></tr>`;
     }
-
-    async function scan() {
-      const symbol = document.getElementById('symbol').value;
-      const interval = document.getElementById('interval').value;
-      const raw = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=100`).then(r => r.json());
-      const lastC = raw.at(-1);
-      const candle = {high: parseFloat(lastC[2]), low: parseFloat(lastC[3]), close: parseFloat(lastC[4])};
-      const pivots = calcPivotLevels(candle);
-
-      const prices = raw.map(k => parseFloat(k[4]));
-      const labels = raw.map(k => new Date(k[0]).toLocaleString());
-      const peaks = detectPeaks(prices);
-      const trend = computeRegressionLine(peaks, prices.length);
-      const signal = generateSignal(prices, trend);
-      const stats = backtest(prices, trend);
-
-      const annotations = {
-        S1: {type:'line', yMin:pivots.S1, yMax:pivots.S1, borderColor:'green', borderWidth:1, label:{content:`S1 ${pivots.S1}`,enabled:true,position:'start'}},
-        R1: {type:'line', yMin:pivots.R1, yMax:pivots.R1, borderColor:'red', borderWidth:1, label:{content:`R1 ${pivots.R1}`,enabled:true,position:'end'}}
-      };
-
-      updateChart(labels, prices, trend, annotations);
-      document.getElementById('stats').innerHTML = `<strong>Backtest:</strong> Trades: ${stats.trades}, Trefferquote: ${stats.winRate}, Ø Profit: ${stats.avgProfit}`;
-      const slope = parseFloat(trend.at(-1)) - parseFloat(trend.at(0));
-      document.getElementById('analysis').textContent = describeAnalysis(signal, pivots, slope);
-      document.querySelector('#resultTable tbody').innerHTML = `<tr><td>${signal}</td><td>${prices.at(-1).toFixed(2)}</td><td>${trend.at(-1)}</td></tr>`;
-    }
-
-    function detectPeaks(prices) { const highs=[], lows=[]; for(let i=1;i<prices.length-1;i++){ if(prices[i]>prices[i-1]&&prices[i]>prices[i+1]) highs.push({i,v:prices[i]}); if(prices[i]<prices[i-1]&&prices[i]<prices[i+1]) lows.push({i,v:prices[i]}); } return {highs,lows}; }
-    function computeRegressionLine(peaks,len){ const pts=peaks.highs.concat(peaks.lows).map(p=>[p.i,p.v]); if(pts.length<2) return Array(len).fill(NaN); const lr=ss.linearRegression(pts), fn=ss.linearRegressionLine(lr); return Array.from({length:len},(_,i)=>fn(i).toFixed(2)); }
-    function generateSignal(pr,tr){ const n=pr.length; if(n<2)return'Keine Daten'; const y0=pr[n-2],y1=pr[n-1],t0=parseFloat(tr[n-2]),t1=parseFloat(tr[n-1]); if(y0<t0&&y1>t1)return'Kauf'; if(y0>t0&&y1<t1)return'Verkauf'; return'Neutral'; }
-    function backtest(pr,tr){ const trades=[]; let pos=null; for(let i=1;i<pr.length;i++){ const sig=generateSignal(pr.slice(0,i+1),tr.slice(0,i+1)); if(!pos&&sig==='Kauf')pos=pr[i]; if(pos&&sig==='Verkauf'){ trades.push(pr[i]-pos); pos=null;} } const wins=trades.filter(p=>p>0).length; const avg=trades.reduce((a,b)=>a+b,0)/Math.max(trades.length,1); return { trades:trades.length, winRate:trades.length?(wins/trades.length*100).toFixed(1)+'%':'0%', avgProfit:avg.toFixed(2) }; }
-    function updateChart(labels,prices,trend,annotations){ if(chart)chart.destroy(); chart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Preis',data:prices,borderWidth:1},{label:'Trendlinie',data:trend,borderDash:[5,5],borderWidth:1}]},options:{scales:{x:{display:false}},plugins:{legend:{position:'bottom'},annotation:{annotations}}}});
-    }
-
-    // Initialer Scan
     scan();
   </script>
 </body>
