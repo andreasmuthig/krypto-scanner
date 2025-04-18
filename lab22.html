@@ -81,13 +81,11 @@
   <div id="mainContent">
     <!-- Deine bereits existierende Übersicht -->
     <section id="overview">
-      <h1>Krypto‑Übersicht</h1>
       <!-- … dein bestehender Code … -->
     </section>
 
     <!-- Trend‑Scanner -->
     <section id="scanner">
-      <h2>Trend‑Scanner mit Unterstützung & Widerstand</h2>
       <div id="controls">
         <label for="symbol">Coin:</label>
         <select id="symbol">
@@ -124,16 +122,15 @@
   </div>
 
   <script>
-    // Icons & Plugin registrieren
+    // Icons initialisieren
     feather.replace();
-    Chart.register(ChartAnnotation);
-
+    
     const ctx = document.getElementById('trendChart').getContext('2d');
     let chart;
 
     document.getElementById('btnScan').addEventListener('click', scan);
 
-    // 1) Pivot‑Level berechnen
+    // Pivot‑Level berechnen
     function calcPivotLevels(candle) {
       const high  = candle.high,
             low   = candle.low,
@@ -148,7 +145,7 @@
       };
     }
 
-    // 2) Kern‑Scan‑Routine
+    // Kern‑Scan‑Routine
     async function scan() {
       const symbol   = document.getElementById('symbol').value;
       const interval = document.getElementById('interval').value;
