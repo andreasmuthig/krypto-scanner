@@ -176,7 +176,10 @@
         chart = new Chart(ctx, {
           type:'line',
           data:{ labels, datasets:[ { label:'Preis', data:prices, borderWidth:1 }, { label:'Trendlinie', data:trend, borderDash:[5,5], borderWidth:1 } ] },
-          options:{ scales:{ x:{ display:false } }, plugins:{ legend:{ position:'bottom' }, annotation:{ annotations: ann } } }
+          options:{ scales:{ x:{ display:false } }, plugins:{ legend:{ position:'bottom' }, annotation:{ annotations: {
+            S1: { ...ann.S1, borderColor: 'rgba(0,255,0,0.4)', label: { ...ann.S1.label, backgroundColor: 'rgba(0,255,0,0.1)', color: '#0f0' } },
+            R1: { ...ann.R1, borderColor: 'rgba(255,0,0,0.4)', label: { ...ann.R1.label, backgroundColor: 'rgba(255,0,0,0.1)', color: '#f00' } }
+          } } } }
         });
 
         document.getElementById('stats').innerHTML = `<strong>Backtest:</strong> Trades: ${stats.trades}, Trefferquote: ${stats.winRate}, Ø Profit: ${stats.avgProfit}`;
