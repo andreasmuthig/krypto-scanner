@@ -68,7 +68,7 @@
             margin-bottom: 10px;
             text-align: center;
         }
-        /* Separate Bereiche für MACD/Siganl */
+        /* Separate Bereiche für MACD/Signal */
         .macdField, .signalField {
             font-weight: bold;
         }
@@ -125,6 +125,7 @@
 
     <script src="https://unpkg.com/feather-icons"></script>
     <script>
+        // Initialisiere Feather Icons
         feather.replace();
 
         // Globale Variablen
@@ -136,15 +137,17 @@
         const lastMACDData = {};
         const lastRSIData = {};
         const bestEntries = {};
-        // Für die Pulsierung: Zeitpunkt der letzten Aktivierung speichern.
-        const lastPulseTime = {};
 
+        // Alarm-Toggle: Beim Deaktivieren entfernen wir den visuellen Alarm bei allen Assets.
         document.getElementById("alarmToggle").addEventListener("click", function(e) {
             e.preventDefault();
             alarmEnabled = !alarmEnabled;
             this.classList.toggle("active", alarmEnabled);
             console.log("Alarm ist jetzt", alarmEnabled ? "aktiv" : "inaktiv");
-            if (alarmEnabled) {
+            if (!alarmEnabled) {
+                document.querySelectorAll(".asset-tile h2").forEach(header => header.classList.remove("pulsating"));
+            } else {
+                // Beim Aktivieren spielt der Ton einmalig ab.
                 document.getElementById("alarmAudio").play();
             }
         });
@@ -196,9 +199,7 @@
             const symbol = data.s;
             if (data.l) {
                 lastLows[symbol].push(parseFloat(data.l));
-                if (lastLows[symbol].length > lowHistorySize) {
-                    lastLows[symbol].shift();
-                }
+                if (lastLows[symbol].length > lowHistorySize) { lastLows[symbol].shift(); }
             }
             updateTileViaWS(symbol, data);
         };
@@ -271,10 +272,8 @@
             let progressTP1TP2 = currentPrice < safeTP1 ? 0 : ((currentPrice - safeTP1) / (tp2 - safeTP1)) * 100;
             progressTP1TP2 = Math.max(0, Math.min(progressTP1TP2, 100));
 
-            const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" :
-                                            progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
-            const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" :
-                                        progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
+            const progressEntryTP1Color = progressEntryTP1 >= 100 ? "#28a745" : progressEntryTP1 >= 50 ? "#ffc107" : "#dc3545";
+            const progressTP1TP2Color = progressTP1TP2 >= 100 ? "#28a745" : progressTP1TP2 >= 50 ? "#ffc107" : "#dc3545";
 
             tile.innerHTML = `
                 <h2>${displayName}</h2>
@@ -300,25 +299,20 @@
                 <div>TP2: ${tp2.toFixed(2)}</div>
                 <div>SL: ${sl.toFixed(2)}</div>
                 <div>CRV: ${(((safeTP1 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl))).toFixed(2)}</div>
-                <div>Trade Score: ${(( (tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl) - (2 * ((currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry)))).toFixed(2))}</div>
+                <div>Trade Score: ${(((tp2 - parseFloat(bestEntry)) / (parseFloat(bestEntry) - sl)) - (2 * ((currentPrice - parseFloat(bestEntry)) / parseFloat(bestEntry)))).toFixed(2)}</div>
                 <div>RSI: ${lastRSIData[symbol]}</div>
             `;
             
-            // Pulsierend nur neu setzen wenn mehr als 10 Sec seit letzter Pulsierung vergangen sind.
+            // Statt eines Timeouts soll der visuelle Alarm (pulsierender Header)
+            // solange angezeigt bleiben, bis der Nutzer den Alarm über den Toggle deaktiviert.
             const header = tile.querySelector("h2");
-            const now = Date.now();
-            if (tradeScore >= 2) {
-                if (!lastPulseTime[symbol] || (now - lastPulseTime[symbol] > 10000)) {
-                    header.classList.add("pulsating");
-                    lastPulseTime[symbol] = now;
-                    setTimeout(() => {
-                        header.classList.remove("pulsating");
-                    }, 10000);
-                }
+            if (tradeScore >= 2 && alarmEnabled) {
+                header.classList.add("pulsating");
             } else {
                 header.classList.remove("pulsating");
             }
             
+            const now = Date.now();
             if (!lastHistoricalDataFetch[symbol] || (now - lastHistoricalDataFetch[symbol]) > historicalDataCooldown) {
                 lastHistoricalDataFetch[symbol] = now;
                 updateMACD(symbol);
@@ -334,13 +328,11 @@
                 const macdData = calculateMACD(historicalPrices);
                 if (macdData) {
                     lastMACDData[symbol] = macdData;
-                    const tile = document.getElementById(`tile-${symbol}`);
-                    if (tile) {
-                        const macdValue = parseFloat(macdData.macd);
-                        const macdColor = macdValue >= 0 ? "green" : "red";
-                        tile.querySelector(".macdField").innerHTML = `<span style="color: ${macdColor};">${macdValue.toFixed(2)}</span>`;
-                        tile.querySelector(".signalField").innerHTML = macdData.signal;
-                    }
+                    const macdValue = parseFloat(macdData.macd);
+                    const macdColor = macdValue >= 0 ? "green" : "red";
+                    document.getElementById(`tile-${symbol}`).querySelector(".macdField").innerHTML = 
+                        `<span style="color: ${macdColor};">${macdValue.toFixed(2)}</span>`;
+                    document.getElementById(`tile-${symbol}`).querySelector(".signalField").textContent = macdData.signal;
                 }
             } catch (error) {
                 console.error("Fehler beim MACD-Abruf:", error);
@@ -351,11 +343,7 @@
             try {
                 const rsiValue = await fetchRSI(symbol);
                 lastRSIData[symbol] = rsiValue.toFixed(2);
-                const tile = document.getElementById(`tile-${symbol}`);
-                if (tile) {
-                    // Aktualisiere nur den RSI-Text, ohne den Rest des Inhalts zu überschreiben.
-                    tile.innerHTML = tile.innerHTML.replace(/RSI: ([^<]*)</, `RSI: ${lastRSIData[symbol]}<`);
-                }
+                document.getElementById(`tile-${symbol}`).innerHTML = document.getElementById(`tile-${symbol}`).innerHTML.replace(/RSI: ([^<]*)</, `RSI: ${lastRSIData[symbol]}<`);
             } catch (error) {
                 console.error("Fehler beim RSI-Abruf:", error);
             }
