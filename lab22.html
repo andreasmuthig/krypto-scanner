@@ -80,7 +80,7 @@
       return `<div class="led-bar">${leds}</div>`;
     }
 
-    // ... scan() Funktion bleibt unverändert ... nur Ausgabe anpassen:
+    // Scan-Funktion: Hier ist die komplette Logik inklusive Signal, Score etc.
 
     document.getElementById('btnScan').addEventListener('click', scan);
     document.getElementById('symbol').addEventListener('change', scan);
@@ -89,6 +89,122 @@
 
     async function scan() {
       try {
+        const sym = document.getElementById('symbol').value;
+        const tf = document.getElementById('interval').value;
+        const raw = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`).then(r => r.json());
+
+        const prices = raw.map(k => parseFloat(k[4]));
+        const volumes = raw.map(k => parseFloat(k[5]));
+        const labels = raw.map(k => new Date(k[0]).toLocaleString());
+
+        const lastCandle = raw.at(-1);
+        const high = parseFloat(lastCandle[2]);
+        const low = parseFloat(lastCandle[3]);
+        const close = parseFloat(lastCandle[4]);
+        const pivot = (high + low + close) / 3;
+        const S1 = (2 * pivot) - high;
+        const R1 = (2 * pivot) - low;
+
+        function detectPeaks(prices) {
+          const highs = [], lows = [];
+          for (let i = 1; i < prices.length - 1; i++) {
+            if (prices[i] > prices[i - 1] && prices[i] > prices[i + 1]) highs.push({ i, v: prices[i] });
+            if (prices[i] < prices[i - 1] && prices[i] < prices[i + 1]) lows.push({ i, v: prices[i] });
+          }
+          return { highs, lows };
+        }
+
+        const peaks = detectPeaks(prices);
+        const pts = peaks.highs.concat(peaks.lows).map(p => [p.i, p.v]);
+        const trend = pts.length >= 2 ? prices.map((_, i) => ss.linearRegressionLine(ss.linearRegression(pts))(i)) : prices.map(() => NaN);
+
+        function genSignal(pr, tr) {
+          const y0 = pr.at(-2), y1 = pr.at(-1);
+          const t0 = tr.at(-2), t1 = tr.at(-1);
+          if (y0 < t0 && y1 > t1) return 'Kauf';
+          if (y0 > t0 && y1 < t1) return 'Verkauf';
+          return 'Neutral';
+        }
+
+        const signal = genSignal(prices, trend);
+
+        const avgVol = volumes.slice(-20).reduce((a,b) => a+b, 0) / Math.min(20, volumes.length);
+        const vol = volumes.at(-1);
+        const volOk = vol / avgVol >= 1.5;
+
+        const rsi = (() => {
+          const deltas = prices.slice(1).map((v,i) => v - prices[i]);
+          let gains = deltas.map(d => Math.max(d, 0));
+          let losses = deltas.map(d => Math.max(-d, 0));
+          let avgGain = gains.slice(0,14).reduce((a,b)=>a+b,0) / 14;
+          let avgLoss = losses.slice(0,14).reduce((a,b)=>a+b,0) / 14;
+          for (let i = 14; i < deltas.length; i++) {
+            avgGain = (avgGain * 13 + gains[i]) / 14;
+            avgLoss = (avgLoss * 13 + losses[i]) / 14;
+          }
+          return 100 - (100 / (1 + avgGain / avgLoss));
+        })();
+
+        const slope = trend.at(-1) - trend.at(0);
+        const range = Math.max(...prices) - Math.min(...prices);
+        const volScore = Math.min((vol/avgVol)/2*100, 100);
+        const rsiScore = Math.max(0, (1 - Math.abs(rsi - 50)/50)*100);
+        const slopeScore = range ? Math.min(Math.abs(slope)/range*100, 100) : 0;
+        const score = ((volScore + rsiScore + slopeScore)/3).toFixed(0);
+
+        const priceLast = prices.at(-1);
+        const sl = S1 * 0.995;
+        const tp = priceLast + 2*(priceLast - sl);
+
+        if (chart && chart.destroy) {
+          chart.destroy();
+        }
+
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Preis', data: prices, borderColor: 'deepskyblue', borderWidth: 1 },
+              { label: 'Trendlinie', data: trend, borderColor: 'pink', borderDash: [5, 5], borderWidth: 1 }
+            ]
+          },
+          options: {
+            plugins: {
+              legend: { position: 'bottom' },
+              annotation: {
+                annotations: {
+                  S1: {
+                    type: 'line', yMin: S1, yMax: S1, borderColor: 'rgba(0,255,0,0.4)', borderWidth: 1,
+                    label: { content: `S1 ${S1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(0,255,0,0.1)', color: '#0f0' }
+                  },
+                  R1: {
+                    type: 'line', yMin: R1, yMax: R1, borderColor: 'rgba(255,0,0,0.4)', borderWidth: 1,
+                    label: { content: `R1 ${R1.toFixed(2)}`, enabled: true, backgroundColor: 'rgba(255,0,0,0.1)', color: '#f00' }
+                  }
+                }
+              }
+            },
+            scales: { x: { display: false } }
+          }
+        });
+
+        document.getElementById('stats').innerHTML = `<strong>RSI:</strong> ${rsi.toFixed(1)}, <strong>Vol:</strong> ${(vol/avgVol).toFixed(2)}×`;
+        document.getElementById('analysis').innerHTML = `Signal: ${signal}, Score: ${score}%`;
+        document.querySelector('#resultTable tbody').innerHTML = `
+          <tr>
+            <td>${signal}</td>
+            <td>${priceLast.toFixed(2)}</td>
+            <td>${trend.at(-1).toFixed(2)}</td>
+            <td>${scoreBar(score)}</td>
+            <td>${sl.toFixed(2)}</td>
+            <td>${tp.toFixed(2)}</td>
+          </tr>`;
+      } catch (err) {
+        console.error("Scan-Fehler:", err);
+        alert("Beim Scannen ist ein Fehler aufgetreten.");
+      }
+    }
         // ... alle bisherigen Berechnungen (aus vorherigem Code) ...
 
         // Am Ende die Tabelle erzeugen mit Score-Balken:
