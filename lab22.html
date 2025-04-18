@@ -83,7 +83,7 @@
         }
         leds += `<div class="${cls}"></div>`;
       }
-      return `<div class="led-bar">${leds}</div>`;
+      return `<div class=\"led-bar\">${leds}</div><div style='font-size: 12px; margin-top: 4px;'>${val}%</div>`;
     }
 
     // Scan-Funktion: Hier ist die komplette Logik inklusive Signal, Score etc.
@@ -214,7 +214,7 @@ document.getElementById('analysis').innerHTML = `Signal: ${signal}, Score: ${sco
             <td>${signal}</td>
             <td>${priceLast.toFixed(2)}</td>
             <td>${trend.at(-1).toFixed(2)}</td>
-            <td>${scoreBar(score)}</td>
+            <td>${scoreBar(score)}<br><small>CRV: ${((tp - priceLast) / (priceLast - sl)).toFixed(2)}</small></td>
             <td>${sl.toFixed(2)}</td>
             <td>${tp.toFixed(2)}</td>
           </tr>`;
